@@ -7,6 +7,7 @@ describe("parseCommand", () => {
   });
 
   it("parse les commandes informatives du débat", () => {
+    expect(parseCommand("/topic")).toEqual({ kind: "topic" });
     expect(parseCommand("/sujet")).toEqual({ kind: "topic" });
     expect(parseCommand("/decisions")).toEqual({ kind: "decisions" });
   });

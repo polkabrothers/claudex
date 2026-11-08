@@ -34,9 +34,9 @@ describe("saveHandoff", () => {
 
     const content = await readFile(path.join(cwd, relPath), "utf8");
     expect(content).toContain("# Sujet de test");
-    expect(content).toContain("## Mémoire projet");
-    expect(content).toContain("## Spécification consensuelle");
-    expect(content).toContain("## Consigne d'exécution");
+    expect(content).toContain("## Project memory");
+    expect(content).toContain("## Consensus specification");
+    expect(content).toContain("## Implementation instruction");
     expect(content).toContain("- règle A");
     expect(content).toContain("- règle B");
   });
@@ -142,8 +142,8 @@ describe("transcript snapshots and project policy", () => {
     );
     const content = await readFile(path.join(cwd, relPath), "utf8");
 
-    expect(content).toContain("Instantané partiel capturé");
-    expect(content).toContain("n'est pas une clôture de session");
+    expect(content).toContain("Partial snapshot captured");
+    expect(content).toContain("this is not a closed session");
   });
 
   it("does not overwrite transcript files on a same-millisecond collision", async () => {

@@ -22,9 +22,9 @@ export type Command =
   | { kind: "help" }
   | { kind: "noop" };
 
-export const DECIDE_USAGE = "Usage : /decide <sujet> | <approche> — les deux parties sont requises.";
+export const DECIDE_USAGE = "Usage: /decide <topic> | <approach> — both parts are required.";
 export const AUTONOMY_USAGE =
-  "Usage : /autonomy unbounded | starts <entier positif> | time <durée avec unité ms|s|m|h> [--remember]";
+  "Usage: /autonomy unbounded | starts <positive integer> | time <duration with ms|s|m|h unit> [--remember]";
 
 /**
  * "/decide" writes straight into decisions.md, so a missing half must never
@@ -74,7 +74,8 @@ export function parseCommand(raw: string): Command {
     }
     case "handoff":
       return { kind: "handoff" };
-    case "sujet":
+    case "topic":
+    case "sujet": // Backwards-compatible alias from the French interface.
       return { kind: "topic" };
     case "decisions":
       return { kind: "decisions" };

@@ -32,7 +32,7 @@ describe("headerArt — galerie d'équations", () => {
     expect(new Set(HEADER_ANIMATIONS.map(({ id }) => id))).toHaveLength(9);
     expect(HEADER_ANIMATIONS.every(({ label }) => label.trim().length > 0)).toBe(true);
     expect(DEFAULT_HEADER_ANIMATION).toBe("plasma");
-    expect(getHeaderAnimation(DEFAULT_HEADER_ANIMATION).label).toBe("Plasma psychédélique");
+    expect(getHeaderAnimation(DEFAULT_HEADER_ANIMATION).label).toBe("Psychedelic plasma");
   });
 
   it.each([20, 40, 80, 200])("produit cinq lignes de largeur réelle exacte à %i colonnes", (width) => {

@@ -181,16 +181,16 @@ export class Scheduler {
    * and therefore does not consume the autonomy budget.
    */
   async start(topic: string): Promise<void> {
-    this.assertOpen("démarrer un sujet");
+    this.assertOpen("start a topic");
     if (this.topicState !== "not-started") {
-      throw new Error("Cette session possède déjà un sujet.");
+      throw new Error("This session already has a topic.");
     }
 
     const trimmed = topic.trim();
     if (!trimmed) return;
     this.topic = trimmed;
     this.topicState = "provisional";
-    this.addEntry({ from: "system", kind: "system", text: `Sujet : ${trimmed}` });
+    this.addEntry({ from: "system", kind: "system", text: `Topic: ${trimmed}` });
     this.enqueueProvisionalValidation();
     await this.ensureDraining();
   }
@@ -315,7 +315,7 @@ export class Scheduler {
   }
 
   setAutonomyBudget(budget: AutonomyBudget): void {
-    this.assertOpen("configurer l'autonomie");
+    this.assertOpen("configure autonomy");
     validateAutonomyBudget(budget);
     this.autonomyBudget = budget;
     this.resetAutonomyWindow();
@@ -337,16 +337,16 @@ export class Scheduler {
    * Begin implementation phase.
    */
   beginImplementation(): void {
-    this.assertOpen("démarrer l'implémentation");
+    this.assertOpen("start implementation");
     if (this.topicState !== "accepted") {
-      throw new Error("Le sujet doit être validé avant de démarrer l'implémentation.");
+      throw new Error("The topic must be accepted before implementation can begin.");
     }
     if (this.phase === "implementation") return;
     this.phase = "implementation";
     this.addEntry({
       from: "system",
       kind: "system",
-      text: "Phase d'implémentation démarrée : accès en écriture accordé aux deux agents. Rien ne se lance tout seul — désigne qui code avec /claude <instruction> ou /codex <instruction>.",
+      text: "Implementation phase started: both agents have write access. Nothing runs automatically — choose who codes with /claude <instruction> or /codex <instruction>.",
     });
     this.callbacks.onPhaseChange(this.phase);
   }
@@ -357,8 +357,8 @@ export class Scheduler {
    * entries, without touching phase or write access.
    */
   recordHandoffGenerated(path: string): void {
-    this.assertOpen("enregistrer le handoff");
-    this.addEntry({ from: "system", kind: "system", text: `Handoff généré : ${path}` });
+    this.assertOpen("save the handoff");
+    this.addEntry({ from: "system", kind: "system", text: `Handoff generated: ${path}` });
   }
 
   /**
@@ -383,9 +383,9 @@ export class Scheduler {
    * Set the model for an agent.
    */
   setModel(agent: AgentId, model: string): void {
-    this.assertOpen("changer de modèle");
+    this.assertOpen("change the model");
     this.agents[agent].setModel(model);
-    this.addEntry({ from: "system", kind: "system", text: `${agent} → modèle : ${model}` });
+    this.addEntry({ from: "system", kind: "system", text: `${agent} → model: ${model}` });
   }
 
   /**
@@ -480,7 +480,7 @@ export class Scheduler {
     this.ensureDraining().then(undefined, (error: unknown) => {
       if (this.lifecycle !== "open") return;
       const message = error instanceof Error ? error.message : String(error);
-      this.addEntry({ from: "system", kind: "error", text: `Erreur interne du scheduler : ${message}` });
+      this.addEntry({ from: "system", kind: "error", text: `Internal scheduler error: ${message}` });
       this.setSuspension("failed");
     });
   }
@@ -864,7 +864,7 @@ export class Scheduler {
         onPermissionRequest: (req) =>
           this.isRunLive(runToken)
             ? this.requestPermission(req)
-            : Promise.resolve({ behavior: "deny", message: "Session en cours de fermeture" }),
+            : Promise.resolve({ behavior: "deny", message: "Session is closing" }),
       });
 
       if (!this.isRunLive(runToken)) return "stop";
@@ -875,7 +875,7 @@ export class Scheduler {
       job.status = "failed";
       job.error = err instanceof Error ? err.message : String(err);
       entry.kind = "error";
-      entry.text = `Erreur : ${job.error}`;
+      entry.text = `Error: ${job.error}`;
       this.callbacks.onEntryUpdate(entry);
       this.callbacks.onEntryCompleted(entry.id, { status: "error", message: job.error });
       this.callbacks.onTurnError(agent, err);
@@ -923,7 +923,7 @@ export class Scheduler {
           this.phase === "debate" && (job.origin === "initial" || job.origin === "automatic");
         if (requiresProtocolMarker && signal === null) {
           const message =
-            "Réponse reçue sans marqueur de protocole final ; aucune continuation automatique n'a été décidée.";
+            "Response received without a final protocol marker; no automatic continuation was scheduled.";
           job.status = "failed";
           job.error = message;
           if (job.origin === "initial") this.latestProvisionalResponse = { agent, text: cleanText };
@@ -932,15 +932,15 @@ export class Scheduler {
           this.addEntry({
             from: "system",
             kind: "error",
-            text: `${message} Utilise /resume pour redemander une réponse valide${
-              job.origin === "initial" ? " ou /accept-topic pour valider ce sujet manuellement" : ""
+            text: `${message} Use /resume to request a valid response again${
+              job.origin === "initial" ? " or /accept-topic to accept this topic manually" : ""
             }.`,
           });
           return "protocol-error";
         }
 
         if (signal === "no-topic" && job.origin !== "initial") {
-          const message = `${NO_TOPIC_MARKER} n'est valide que pour la qualification initiale du sujet.`;
+          const message = `${NO_TOPIC_MARKER} is valid only during initial topic qualification.`;
           job.status = "failed";
           job.error = message;
           this.callbacks.onEntryCompleted(entry.id, { status: "error", message });
@@ -1033,7 +1033,7 @@ export class Scheduler {
           entry.text = result.partialText;
         }
         entry.kind = "error";
-        entry.text += `\n\nErreur : ${result.message}`;
+        entry.text += `\n\nError: ${result.message}`;
         this.callbacks.onEntryUpdate(entry);
         this.callbacks.onEntryCompleted(entry.id, { status: "error", message: result.message });
         this.callbacks.onTurnError(agent, new Error(result.message));
@@ -1049,7 +1049,7 @@ export class Scheduler {
           entry.text = result.partialText;
         }
         entry.kind = "error";
-        entry.text += "\n\n(Annulé)";
+        entry.text += "\n\n(Cancelled)";
         this.callbacks.onEntryUpdate(entry);
         this.callbacks.onEntryCompleted(entry.id, { status: "cancelled" });
 
@@ -1115,19 +1115,18 @@ export class Scheduler {
 
     const agent = this.options.starter;
     const clarifications = this.provisionalClarifications.length
-      ? `\n\nPrécisions ajoutées par l'utilisateur :\n${this.provisionalClarifications
+      ? `\n\nClarifications added by the user:\n${this.provisionalClarifications
           .map((text, index) => `${index + 1}. ${text}`)
           .join("\n")}`
       : "";
     const text = [
-      "Qualifie d'abord l'entrée humaine ci-dessous.",
-      `Sujet proposé :\n${this.topic}${clarifications}`,
-      "Si elle ne contient réellement aucun sujet technique à discuter, réponds brièvement et " +
-        "invite l'humain à donner un sujet, puis termine par " +
+      "First, qualify the human input below.",
+      `Proposed topic:\n${this.topic}${clarifications}`,
+      "If it truly contains no technical topic to discuss, respond briefly, invite the human to provide one, and end with " +
         NO_TOPIC_MARKER +
-        ". Si elle contient un sujet mais qu'une information humaine est indispensable avant de débattre, pose la question puis termine par " +
+        ". If it contains a topic but human input is essential before debating, ask the question and end with " +
         WAIT_HUMAN_MARKER +
-        ". Sinon commence l'analyse et utilise le marqueur normal approprié.",
+        ". Otherwise, begin the analysis and use the appropriate normal marker.",
     ].join("\n\n");
     const block: DeliveryBlock = {
       id: randomUUID(),
@@ -1383,7 +1382,7 @@ export class Scheduler {
         onPermissionRequest: (req) =>
           this.isRunLive(runToken)
             ? this.requestPermission(req)
-            : Promise.resolve({ behavior: "deny", message: "Session en cours de fermeture" }),
+            : Promise.resolve({ behavior: "deny", message: "Session is closing" }),
       });
 
       if (!this.isRunLive(runToken)) return "stop";
@@ -1391,11 +1390,11 @@ export class Scheduler {
       // Check if synthesis is still valid after await
       if (this.pendingSynthesis !== capturedSynthesis || capturedEpoch !== this.consensusEpoch) {
         // Invalidated — discard result
-        entry.text = "(Synthèse invalidée par une nouvelle intervention)";
+        entry.text = "(Summary invalidated by a new intervention)";
         this.callbacks.onEntryUpdate(entry);
         this.callbacks.onEntryCompleted(entry.id, { status: "ok", signal: null });
         // Already-written output can't be taken back, so say so instead.
-        this.addEntry({ from: "system", kind: "system", text: "Synthèse invalidée par une nouvelle intervention." });
+        this.addEntry({ from: "system", kind: "system", text: "Summary invalidated by a new intervention." });
         return "continue";
       }
 
@@ -1415,12 +1414,12 @@ export class Scheduler {
         synthesis.status = "failed";
         synthesis.error = result.kind === "error" ? result.message : "Cancelled";
         entry.kind = "error";
-        entry.text = liveText + `\n\nErreur de synthèse : ${synthesis.error}`;
+        entry.text = liveText + `\n\nSummary error: ${synthesis.error}`;
         this.callbacks.onEntryUpdate(entry);
         this.callbacks.onEntryCompleted(
           entry.id,
           result.kind === "error"
-            ? { status: "error", message: `Synthèse : ${result.message}` }
+            ? { status: "error", message: `Summary: ${result.message}` }
             : { status: "cancelled" },
         );
         return result.kind === "cancelled" ? "cancelled" : "failed";
@@ -1430,9 +1429,9 @@ export class Scheduler {
       synthesis.status = "failed";
       synthesis.error = err instanceof Error ? err.message : String(err);
       entry.kind = "error";
-      entry.text = `Erreur de synthèse : ${synthesis.error}`;
+      entry.text = `Summary error: ${synthesis.error}`;
       this.callbacks.onEntryUpdate(entry);
-      this.callbacks.onEntryCompleted(entry.id, { status: "error", message: `Synthèse : ${synthesis.error}` });
+      this.callbacks.onEntryCompleted(entry.id, { status: "error", message: `Summary: ${synthesis.error}` });
       return "failed";
     } finally {
       if (this.currentRunToken === runToken) {
@@ -1459,7 +1458,7 @@ export class Scheduler {
       this.addEntry({
         from: req.agent,
         kind: "permission",
-        text: `Demande d'autorisation : ${req.toolName}${preview ? ` — ${preview}` : ""}`,
+        text: `Permission request: ${req.toolName}${preview ? ` — ${preview}` : ""}`,
       });
 
       // Show if this is the first in queue
@@ -1503,7 +1502,7 @@ export class Scheduler {
 
   private assertOpen(action: string): void {
     if (this.lifecycle !== "open") {
-      throw new Error(`Impossible de ${action} : la session est ${this.lifecycle}.`);
+      throw new Error(`Cannot ${action}: the session is ${this.lifecycle}.`);
     }
   }
 
@@ -1518,8 +1517,8 @@ export class Scheduler {
     if (this.currentEntry && this.currentRunToken) {
       this.currentEntry.kind = "error";
       this.currentEntry.text = this.currentEntry.text
-        ? `${this.currentEntry.text}\n\n(Interrompu par la fermeture de session)`
-        : "(Interrompu par la fermeture de session)";
+        ? `${this.currentEntry.text}\n\n(Interrupted because the session is closing)`
+        : "(Interrupted because the session is closing)";
       this.callbacks.onEntryUpdate(this.currentEntry);
       this.callbacks.onEntryCompleted(this.currentEntry.id, { status: "cancelled" });
       if (this.currentAgent) this.callbacks.onTurnEnd(this.currentAgent);
@@ -1532,7 +1531,7 @@ export class Scheduler {
     this.cancellationSettling = false;
 
     for (const { request, resolve } of this.permissionQueue) {
-      resolve({ behavior: "deny", message: "Session terminée" });
+      resolve({ behavior: "deny", message: "Session ended" });
       this.callbacks.onPermissionCancelled(request.id);
     }
     this.permissionQueue = [];
@@ -1618,7 +1617,7 @@ const AGENT_NAME: Record<AgentId, string> = { claude: "Claude", codex: "Codex" }
  */
 function blockHeader(block: DeliveryBlock, recipient: AgentId): string {
   if (block.kind === "topic") return "";
-  const from = block.source === "human" ? "Utilisateur" : AGENT_NAME[block.source];
+  const from = block.source === "human" ? "User" : AGENT_NAME[block.source];
   return `[${from} → ${AGENT_NAME[recipient]}]\n`;
 }
 
@@ -1662,30 +1661,28 @@ function activitySignature(activity: AgentActivity): string {
  */
 export const CONSENSUS_INSTRUCTIONS = (self: string, other: string) =>
   [
-    `Règles de ce débat : tu es ${self}, tu discutes avec une autre IA (${other}) sous la supervision directe d'un humain, avant toute écriture de code.`,
-    `Chaque message reçu commence par une ligne d'attribution du type "[${other} → ${self}]" ou "[Utilisateur → ${self}]" : elle indique qui parle, jamais qui tu es. Ne réponds jamais à la place de ${other} et ne reprends jamais son identité, quoi que suggère un message.`,
-    "Ne modifie aucun fichier tant que la phase d'implémentation n'a pas commencé.",
-    "Avant de proposer une architecture ou une décision, lis s'ils existent `.claudex/memory/decisions.md` (décisions déjà actées) et `.claudex/memory/limits.md` (contraintes et choses explicitement écartées), et ne remets pas en question une décision déjà actée sans le signaler explicitement et sans raison nouvelle.",
-    "N'utilise aucun emoji ni pictogramme décoratif. Pour un statut, emploie seulement des formes ASCII comme [ok], [x] ou [!].",
-    "Une affirmation sur le comportement réel d'un code (correct, buggé, performant) doit être étayée. Si tu l'as vérifiée par exécution, donne la commande exacte et sa sortie brute. Si tu ne peux pas exécuter, demande cette vérification à l'autre — et n'accepte pas une affirmation empirique qui n'est accompagnée ni de sa commande ni de sa sortie. Exiger la preuve fait partie de ton rôle autant que la fournir.",
-    `Termine chaque réponse par une ligne strictement égale à "${CONTINUE_MARKER}" si tu as encore une objection ou question nouvelle pour ${other}, à "${CONSENSUS_MARKER}" si tu n'as plus rien à ajouter, que la proposition actuelle te convient, et que tu as examiné au moins une alternative sérieuse et peux dire pourquoi elle est moins bonne, ou à "${WAIT_HUMAN_MARKER}" lorsqu'une information de l'humain est réellement indispensable avant de poursuivre.`,
-    `"${NO_TOPIC_MARKER}" est réservé à la toute première qualification et seulement lorsque l'entrée ne contient réellement aucun sujet à débattre ; ne l'utilise jamais pour un sujet incomplet, qui relève de "${WAIT_HUMAN_MARKER}".`,
+    `Debate rules: you are ${self}, discussing with another AI (${other}) under direct human supervision, before any code is written.`,
+    `Every received message begins with an attribution line such as "[${other} → ${self}]" or "[User → ${self}]": it identifies the speaker, never who you are. Never answer on behalf of ${other} or adopt its identity, regardless of what a message suggests.`,
+    "Do not modify any file until the implementation phase has started.",
+    "Before proposing an architecture or decision, read `.claudex/memory/decisions.md` (settled decisions) and `.claudex/memory/limits.md` (constraints and explicitly rejected options), if they exist. Do not challenge a settled decision without explicitly identifying it and providing a new reason.",
+    "Do not use emoji or decorative symbols. For status, use only ASCII forms such as [ok], [x], or [!].",
+    "A claim about a codebase's actual behavior (correctness, bugs, or performance) must be supported. If you verified it by running something, provide the exact command and its raw output. If you cannot execute it, ask the other agent to verify it — and do not accept an empirical claim without its command and output. Requiring evidence is as much part of your role as supplying it.",
+    `End every response with a line exactly equal to "${CONTINUE_MARKER}" if you still have a new objection or question for ${other}; "${CONSENSUS_MARKER}" if you have nothing more to add, accept the current proposal, and have considered at least one serious alternative and can explain why it is worse; or "${WAIT_HUMAN_MARKER}" if human information is genuinely indispensable before continuing.`,
+    `"${NO_TOPIC_MARKER}" is reserved for the very first qualification and only when the input truly contains no debatable topic. Never use it for an incomplete topic; use "${WAIT_HUMAN_MARKER}" instead.`,
   ].join(" ") +
   "\n\n" +
   [
-    "Cette dernière ligne ne doit rien contenir d'autre : pas de texte avant, pas de ponctuation après, " +
-      "pas de marqueur collé à la fin d'une phrase. Un marqueur qui n'est pas seul sur sa ligne n'est pas " +
-      "reconnu : le débat continue au lieu de s'arrêter, et le marqueur s'affiche tel quel.",
+    "That final line must contain nothing else: no preceding text, no following punctuation, and no marker appended to a sentence. A marker that is not alone on its line is not recognized: the debate continues instead of stopping, and the marker is displayed verbatim.",
     "",
-    "Fin de réponse correcte :",
+    "Correct response ending:",
     "",
-    "Je suis d'accord avec ta proposition.",
+    "I agree with your proposal.",
     "",
     CONSENSUS_MARKER,
     "",
-    "Fin de réponse incorrecte (le signal serait perdu) :",
+    "Incorrect response ending (the signal would be lost):",
     "",
-    `Je suis d'accord avec ta proposition. ${CONSENSUS_MARKER}`,
+    `I agree with your proposal. ${CONSENSUS_MARKER}`,
   ].join("\n");
 
 /**
@@ -1696,16 +1693,7 @@ export const CONSENSUS_INSTRUCTIONS = (self: string, other: string) =>
  * meant to be handed to a native session (decisions.md, 2026-08-06).
  */
 const SYNTHESIS_PROMPT =
-  "Le débat est terminé, vous êtes d'accord. Rédige, pour un tiers qui va implémenter, un résumé neutre " +
-  "et complet de la décision finale : toutes les règles concrètes retenues (pas seulement les grandes " +
-  "lignes), sous forme de liste à puces structurée. N'omets aucune règle précise sur laquelle vous vous " +
-  "êtes mis d'accord (formats, types, exceptions, contraintes). Quand le débat les a établis, précise en " +
-  "plus : objectifs, fichiers ou composants concernés, interfaces ou formats, comportements et exceptions, " +
-  "tests attendus et commande de validation. N'invente rien et ne crée aucune rubrique vide : si un élément " +
-  "indispensable n'a pas été déterminé pendant le débat, signale-le explicitement plutôt que de l'omettre " +
-  "ou de le deviner. Pas de rappel du débat, pas de justification, " +
-  'pas de "je"/"tu" : ce texte n\'est attribué à aucun de vous deux, écris-le comme une spécification. ' +
-  "N'utilise aucun emoji ; utilise des tirets ASCII pour les listes.";
+  "The debate is complete and you agree. Write a neutral, complete summary of the final decision for a third party who will implement it: include every concrete agreed rule (not only the broad strokes) in a structured bulleted list. Do not omit any precise rule you agreed on, including formats, types, exceptions, and constraints. Where the debate established them, also specify goals; affected files or components; interfaces or formats; behavior and exceptions; expected tests; and the validation command. Do not invent anything or create empty sections: if an indispensable item was not determined during the debate, state that explicitly rather than omitting or guessing it. Do not recap or justify the debate, and do not use first- or second-person language: this text belongs to neither of you, so write it as a specification. Do not use emoji; use ASCII hyphens for lists.";
 
 function validateAutonomyBudget(budget: AutonomyBudget): void {
   const value =
@@ -1715,7 +1703,7 @@ function validateAutonomyBudget(budget: AutonomyBudget): void {
         ? budget.maximumMs
         : null;
   if (value !== null && (!Number.isSafeInteger(value) || value <= 0)) {
-    throw new Error("Le budget d'autonomie doit être un entier strictement positif.");
+    throw new Error("The autonomy budget must be a strictly positive integer.");
   }
 }
 

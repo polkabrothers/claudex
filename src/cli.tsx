@@ -10,14 +10,14 @@ async function main() {
 
   if (!hasInteractiveTerminal(process.stdin, process.stdout)) {
     console.error(
-      "Claudex a besoin d'un vrai terminal interactif (TTY) : lance-le directement dans ton terminal, pas via un pipe, un script non interactif ou un `| cat`.",
+      "Claudex requires a real interactive terminal (TTY): run it directly in your terminal, not through a pipe, a non-interactive script, or `| cat`.",
     );
     process.exit(1);
   }
 
   const { created } = await initMemoryScaffold(cwd);
   if (created.length) {
-    console.log(`Mémoire de projet initialisée : ${created.join(", ")}`);
+    console.log(`Project memory initialized: ${created.join(", ")}`);
   }
 
   // Mode 1007 asks compatible terminals to translate the wheel into arrow keys

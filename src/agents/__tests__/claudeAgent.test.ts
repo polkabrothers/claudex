@@ -23,7 +23,7 @@ function successResult() {
 describe("ClaudeAgent streaming", () => {
   beforeEach(() => queryMock.mockReset());
 
-  it("émet les vrais text_delta sans répéter le message assistant final", async () => {
+  it("emits actual text_delta events without repeating the final assistant message", async () => {
     queryMock.mockReturnValue(
       messages([
         {
@@ -68,7 +68,7 @@ describe("ClaudeAgent streaming", () => {
     expect(agent.currentModel()).toBe("Opus 4.5");
     expect(agent.hasExplicitModel()).toBe(false);
 
-    const result = await agent.send("Sujet", {
+    const result = await agent.send("Topic", {
       cwd: "/tmp",
       writeAccess: false,
       onTextDelta: (delta) => deltas.push(delta),
@@ -81,17 +81,16 @@ describe("ClaudeAgent streaming", () => {
     expect(agent.currentModel()).toBe("Test");
     expect(queryMock.mock.calls[0]?.[0]?.options.model).toBeUndefined();
     expect(queryMock.mock.calls[0]?.[0]?.options.includePartialMessages).toBe(true);
-    // Mesuré : les réglages utilisateur coûtent 13 300 tokens de prompt système
-    // par appel, en catalogues de plugins qu'un agent limité à Read/Grep/Glob
-    // ne peut pas utiliser. Le seul champ utile, le modèle par défaut, est lu
-    // par Claudex et passé explicitement.
+    // Measured: user settings cost 13,300 system-prompt tokens per call for
+    // plugin catalogues an agent limited to Read/Grep/Glob cannot use. Claudex
+    // reads and explicitly passes the only useful field, the default model.
     expect(queryMock.mock.calls[0]?.[0]?.options.settingSources).toEqual(["project"]);
 
     agent.resetSession();
     expect(agent.currentModel()).toBe("Opus 4.5");
   });
 
-  it("affiche le modèle qui a répondu, pas le premier modèle listé dans modelUsage", async () => {
+  it("shows the model that answered rather than the first model in modelUsage", async () => {
     // Measured on SDK 0.3.310: with model "opus", modelUsage lists the engine's
     // background Haiku first, then the model that actually answered.
     queryMock.mockReturnValue(
@@ -102,7 +101,7 @@ describe("ClaudeAgent streaming", () => {
           message: {
             model: "claude-opus-5-5",
             usage: { input_tokens: 1_000, output_tokens: 100 },
-            content: [{ type: "text", text: "Résumé" }],
+            content: [{ type: "text", text: "Summary" }],
           },
         },
         {
@@ -116,46 +115,46 @@ describe("ClaudeAgent streaming", () => {
     );
 
     const agent = new ClaudeAgent("opus", "Opus 5");
-    await agent.send("Sujet", { cwd: "/tmp", writeAccess: false });
+    await agent.send("Topic", { cwd: "/tmp", writeAccess: false });
 
     expect(agent.currentModel()).toBe("Opus 5.5");
   });
 
-  it("affiche le libellé du sélecteur dès qu'un modèle est choisi", () => {
+  it("shows the picker label as soon as a model is selected", () => {
     const agent = new ClaudeAgent();
     agent.setModel("sonnet");
     expect(agent.currentModel()).toBe("Sonnet 5");
     expect(agent.hasExplicitModel()).toBe(true);
   });
 
-  it("explique clairement quand le choix automatique n'est pas encore résolu", () => {
-    expect(new ClaudeAgent().currentModel()).toBe("auto (détecté au 1er tour)");
+  it("explains when automatic selection has not yet resolved", () => {
+    expect(new ClaudeAgent().currentModel()).toBe("auto (detected on first turn)");
   });
 
-  it("conserve le message assistant complet comme fallback", async () => {
+  it("keeps the complete assistant message as a fallback", async () => {
     queryMock.mockReturnValue(
       messages([
         {
           type: "assistant",
           session_id: "session-1",
-          message: { content: [{ type: "text", text: "Réponse complète" }] },
+          message: { content: [{ type: "text", text: "Complete response" }] },
         },
         successResult(),
       ]) as never,
     );
 
     const deltas: string[] = [];
-    const result = await new ClaudeAgent().send("Sujet", {
+    const result = await new ClaudeAgent().send("Topic", {
       cwd: "/tmp",
       writeAccess: false,
       onTextDelta: (delta) => deltas.push(delta),
     });
 
-    expect(deltas).toEqual(["Réponse complète"]);
-    expect(result).toMatchObject({ kind: "success", text: "Réponse complète" });
+    expect(deltas).toEqual(["Complete response"]);
+    expect(result).toMatchObject({ kind: "success", text: "Complete response" });
   });
 
-  it("transforme une limite de session en erreur explicite et reprenable", async () => {
+  it("turns a session limit into an explicit recoverable error", async () => {
     queryMock.mockReturnValue(
       messages([
         {
@@ -169,53 +168,52 @@ describe("ClaudeAgent streaming", () => {
       ]) as never,
     );
 
-    const result = await new ClaudeAgent().send("Sujet", { cwd: "/tmp", writeAccess: false });
+    const result = await new ClaudeAgent().send("Topic", { cwd: "/tmp", writeAccess: false });
 
     expect(result).toMatchObject({ kind: "error" });
     if (result.kind === "error") {
-      expect(result.message).toContain("Limite Claude Code atteinte");
+      expect(result.message).toContain("Claude Code limit reached");
       expect(result.message).toContain("/resume");
       expect(result.message).not.toContain("Unknown SDK error");
     }
   });
 });
 
-describe("ClaudeAgent — réglages par phase", () => {
+describe("ClaudeAgent — settings by phase", () => {
   beforeEach(() => queryMock.mockReset());
 
   /**
-   * Retirer les réglages utilisateur allège le débat, mais les instructions
-   * projet — le CLAUDE.md de l'utilisateur — doivent rester dans
-   * les deux phases, et l'implémentation garde l'outillage global.
+   * Omitting user settings keeps debate context lean, while the user's project
+   * instructions stay in both phases and implementation keeps global tooling.
    */
-  it("charge les réglages utilisateur seulement pendant l'implémentation", async () => {
+  it("loads user settings only during implementation", async () => {
     queryMock.mockReturnValue(messages([successResult()]));
     const agent = new ClaudeAgent();
-    await agent.send("Applique la spécification", { cwd: "/tmp", writeAccess: true });
+    await agent.send("Apply the specification", { cwd: "/tmp", writeAccess: true });
 
     const options = queryMock.mock.calls[0]?.[0]?.options;
     expect(options.settingSources).toEqual(["project", "user"]);
     expect(options.tools).toEqual({ type: "preset", preset: "claude_code" });
   });
 
-  it("transmet au SDK le modèle configuré que Claudex a lu lui-même", async () => {
+  it("passes the configured model that Claudex read itself to the SDK", async () => {
     queryMock.mockReturnValue(messages([successResult()]));
     const agent = new ClaudeAgent("opus");
-    await agent.send("Sujet", { cwd: "/tmp", writeAccess: false });
+    await agent.send("Topic", { cwd: "/tmp", writeAccess: false });
 
     expect(queryMock.mock.calls[0]?.[0]?.options.model).toBe("opus");
   });
 
   /**
-   * En débat, la lecture seule ne repose que sur `tools` et `canUseTool` :
-   * `permissionMode: "plan"` et `allowedTools` ne l'imposent pas dans le SDK
-   * installé (limits.md, 2026-08-29). Ce test fige ces réglages pour qu'une
-   * mise à jour du SDK ne les relâche pas en silence.
+   * In debate mode, read-only behavior relies only on `tools` and `canUseTool`:
+   * `permissionMode: "plan"` and `allowedTools` do not enforce it in the installed
+   * SDK (limits.md, 2026-08-29). This test locks in these settings so an SDK
+   * update cannot silently loosen them.
    */
-  it("restreint le débat à Read, Grep et Glob, sous arbitrage humain", async () => {
+  it("restricts debate to Read, Grep, and Glob under human oversight", async () => {
     queryMock.mockReturnValue(messages([successResult()]));
     const agent = new ClaudeAgent();
-    await agent.send("Sujet", {
+    await agent.send("Topic", {
       cwd: "/tmp",
       writeAccess: false,
       onPermissionRequest: async () => ({ behavior: "deny" }),

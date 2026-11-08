@@ -49,14 +49,14 @@ export class ClaudeAgent implements CodingAgent {
   }
 
   resetSession(): void {
-    if (this.activeSend) throw new Error("Impossible de réinitialiser Claude pendant un tour actif.");
+    if (this.activeSend) throw new Error("Cannot reset Claude during an active turn.");
     this.sessionId = undefined;
     this.resolvedModel = undefined;
   }
 
   send(message: string, options: AgentSendOptions): Promise<AgentResult> {
     if (this.activeSend) {
-      return Promise.resolve({ kind: "error", message: "Un tour Claude est déjà actif." });
+      return Promise.resolve({ kind: "error", message: "A Claude turn is already active." });
     }
     const operation = this.performSend(message, options);
     const tracked = operation.finally(() => {
@@ -433,25 +433,25 @@ function describeClaudeTool(name: string, input: unknown): Omit<ToolActivity, "s
 
   switch (name) {
     case "Bash":
-      return { kind: "command", label: stringField("command") || "commande" };
+      return { kind: "command", label: stringField("command") || "command" };
     case "Read":
-      return { kind: "tool", label: `lit ${stringField("file_path") || "un fichier"}` };
+      return { kind: "tool", label: `reads ${stringField("file_path") || "a file"}` };
     case "Grep": {
       const pattern = stringField("pattern");
-      return { kind: "tool", label: pattern ? `recherche « ${pattern} »` : "recherche dans le code" };
+      return { kind: "tool", label: pattern ? `searches for “${pattern}”` : "searches the code" };
     }
     case "Glob":
-      return { kind: "tool", label: `parcourt ${stringField("pattern") || "les fichiers"}` };
+      return { kind: "tool", label: `scans ${stringField("pattern") || "files"}` };
     case "Edit":
     case "Write":
     case "NotebookEdit":
-      return { kind: "tool", label: `modifie ${stringField("file_path") || "un fichier"}` };
+      return { kind: "tool", label: `edits ${stringField("file_path") || "a file"}` };
     case "WebSearch":
-      return { kind: "tool", label: `recherche sur le web : ${stringField("query") || "requête"}` };
+      return { kind: "tool", label: `searches the web: ${stringField("query") || "query"}` };
     case "TodoWrite":
-      return { kind: "tool", label: "met à jour son plan" };
+      return { kind: "tool", label: "updates its plan" };
     default:
-      return { kind: "tool", label: `utilise ${name}` };
+      return { kind: "tool", label: `uses ${name}` };
   }
 }
 
@@ -462,21 +462,21 @@ function describeClaudeResultError(
   const detail = result.errors?.filter(Boolean).join(" · ") || assistantError || "";
 
   if (result.subtype === "error_max_budget_usd") {
-    return "Limite de budget Claude atteinte — reprends avec /resume après avoir augmenté ou réinitialisé le budget.";
+    return "Claude budget limit reached — use /resume after increasing or resetting the budget.";
   }
   if (looksLikeUsageLimit(detail) || assistantError === "rate_limit") {
-    return `Limite Claude Code atteinte — reprends avec /resume après la réinitialisation${detail ? ` (${detail})` : ""}.`;
+    return `Claude Code limit reached — use /resume after it resets${detail ? ` (${detail})` : ""}.`;
   }
   if (result.subtype === "error_max_turns") {
-    return `Nombre maximal de tours Claude atteint${detail ? ` : ${detail}` : "."}`;
+    return `Maximum Claude turns reached${detail ? `: ${detail}` : "."}`;
   }
-  return detail || `Erreur Claude Code (${result.subtype ?? "inconnue"})`;
+  return detail || `Claude Code error (${result.subtype ?? "unknown"})`;
 }
 
 function describeClaudeThrownError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (looksLikeUsageLimit(message)) {
-    return `Limite Claude Code atteinte — reprends avec /resume après la réinitialisation (${message}).`;
+    return `Claude Code limit reached — use /resume after it resets (${message}).`;
   }
   return message;
 }

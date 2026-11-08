@@ -82,11 +82,11 @@ describe("ModelPicker", () => {
     const lines = frame.split("\n");
     expect(lines).toHaveLength(MODEL_PICKER_ROWS);
     expect(frame).toContain("› Opus 5");
-    expect(frame).toContain("— le plus puissant, plus lent");
+    expect(frame).toContain("— most capable, slower");
     expect(frame).toContain("Sonnet 5");
-    expect(frame).toContain("— équilibré (recommandé)");
+    expect(frame).toContain("— balanced (recommended)");
     expect(frame).not.toContain("Fable 5");
-    expect(frame).toContain("↑↓ 1/4 · Tab ou Entrée choisir · Échap fermer");
+    expect(frame).toContain("↑↓ 1/4 · Tab or Enter select · Esc close");
 
     const describedLines = lines.filter((line) => line.includes(" — "));
     expect(describedLines).toHaveLength(3);
@@ -114,8 +114,8 @@ describe("ModelPicker", () => {
     await ready(terminal);
 
     const frame = terminal.output.join("").replace(ANSI_SEQUENCE, "");
-    expect(frame).toContain("› gpt-5.6-sol, effort max — défaut configuré");
-    expect(frame).toContain("↑↓ 1/2 · Tab ou Entrée choisir · Échap fermer");
+    expect(frame).toContain("› gpt-5.6-sol, effort max — configured default");
+    expect(frame).toContain("↑↓ 1/2 · Tab or Enter select · Esc close");
     await press(terminal, "\u001b[B");
     await press(terminal, "\t");
     expect(terminal.onSelect).toHaveBeenCalledWith("gpt-5.5");

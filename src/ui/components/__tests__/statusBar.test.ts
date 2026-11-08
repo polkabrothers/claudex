@@ -30,7 +30,7 @@ describe("StatusBar activity formatting", () => {
         label: "npm test",
         activeCount: 3,
       }),
-    ).toBe("3 commandes en cours · $ npm test");
+    ).toBe("3 commands running · $ npm test");
   });
 
   it("garde un résultat compact jusqu'à l'activité suivante", () => {
@@ -42,7 +42,7 @@ describe("StatusBar activity formatting", () => {
         durationMs: 8_200,
         exitCode: 1,
       }),
-    ).toBe("$ npm test · 8,2 s · code 1");
+    ).toBe("$ npm test · 8,2 s · exit 1");
   });
 
   it("utilise les nouveaux noms et index ANSI des agents", () => {
@@ -78,7 +78,7 @@ describe("StatusBar activity formatting", () => {
       { kind: "tool", status: "success", label: "une activité très longue ".repeat(5) },
       width,
     );
-    const fixedWidth = displayWidth("Implémentation  ·  [ok] Codex ");
+    const fixedWidth = displayWidth("Implementation  ·  [ok] Codex ");
 
     expect(fixedWidth + displayWidth(fitted)).toBeLessThanOrEqual(statusBarWidth(width));
   });
@@ -125,6 +125,6 @@ describe("StatusBar activity formatting", () => {
       }),
     ).replace(ANSI_SEQUENCE, "");
 
-    expect(output).toBe("Implémentation  ·  Claude + Codex");
+    expect(output).toBe("Implementation  ·  Claude + Codex");
   });
 });

@@ -5,13 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   let autoComplete = true;
-  let autoResponse = "Sujet qualifié\n\n<<CONTINUE>>";
+  let autoResponse = "Topic accepted\n\n<<CONTINUE>>";
   // Mutable : la mémoire du projet change sous les pieds de Claudex dès qu'une
   // session écrit une décision, et l'accueil doit refléter le disque, pas
   // l'état du lancement.
   const projectStatus = {
     decisionsCount: 0,
-    decisionsText: "# Décisions\n\nAucune décision actée.",
+    decisionsText: "# Decisions\n\nNo confirmed decisions.",
     lastSession: null as string | null,
     claudeDefaultModel: null as string | null,
     codexDefaultModel: null as string | null,
@@ -97,7 +97,7 @@ vi.mock("../../memory/store.js", () => ({
   appendDecision: vi.fn(async () => {}),
   appendDevlog: mocks.appendDevlog,
   appendLimit: vi.fn(async () => {}),
-  readDecisions: vi.fn(async () => "# Décisions\n\nAucune décision actée."),
+  readDecisions: vi.fn(async () => "# Decisions\n\nNo confirmed decisions."),
   rememberAutonomyBudget: vi.fn(async () => {}),
   saveHandoff: vi.fn(async () => "handoff.md"),
   saveTranscript: mocks.saveTranscript,
@@ -172,7 +172,7 @@ describe("Root — cycle de vie du header", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.setAutoComplete(true);
-    mocks.setAutoResponse("Sujet qualifié\n\n<<CONTINUE>>");
+    mocks.setAutoResponse("Topic accepted\n\n<<CONTINUE>>");
     mocks.projectStatus.decisionsCount = 0;
     mocks.saveTranscript.mockResolvedValue("trace.md");
   });
@@ -193,9 +193,9 @@ describe("Root — cycle de vie du header", () => {
 
     const initialFrame = terminal.chunks.join("").replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
     const lines = initialFrame.split("\n");
-    const memoryLine = lines.findIndex((line) => line.includes("Mémoire :"));
+    const memoryLine = lines.findIndex((line) => line.includes("Memory:"));
     const taglineLine = lines.findIndex((line) => line.includes(WELCOME_TAGLINE));
-    const promptLine = lines.findIndex((line) => line.includes("Décrivez la problématique technique"));
+    const promptLine = lines.findIndex((line) => line.includes("Describe the technical question"));
     const modelsLine = lines.findIndex((line) => line.includes("fake-model + fake-model"));
     expect(memoryLine).toBeGreaterThan(-1);
     expect(taglineLine).toBeGreaterThan(memoryLine);
@@ -207,8 +207,8 @@ describe("Root — cycle de vie du header", () => {
     expect(WELCOME_TAGLINE_COLOR).toBe("ansi256(138)");
     expect(WELCOME_MEMORY_COLOR).toBe("ansi256(102)");
     const formattedSession = formatLastSession("2026-08-10T11:42:17.288Z");
-    expect(formattedSession).toContain("10 août 2026");
-    expect(formattedSession).toMatch(/\d{2}:\d{2}$/);
+    expect(formattedSession).toContain("August 10, 2026");
+    expect(formattedSession).toMatch(/\d{1,2}:\d{2} [AP]M$/);
     expect(formattedSession).not.toContain("T11:42:17.288Z");
     expect(welcomeDivider(80)).toBe("-".repeat(80));
     expect(welcomeDivider(200)).toBe("-".repeat(96));
@@ -217,9 +217,9 @@ describe("Root — cycle de vie du header", () => {
       80,
     );
     expect(displayWidth(memory)).toBe(80);
-    expect(memory).toMatch(/^Mémoire : 3 décisions actées/);
-    expect(memory).toMatch(/dernière session : .*10 août 2026.*\d{2}:\d{2}$/);
-    expect(initialFrame).not.toContain("Plasma psychédélique");
+    expect(memory).toMatch(/^Memory: 3 confirmed decisions/);
+    expect(memory).toMatch(/last session: .*August 10, 2026.*\d{1,2}:\d{2} [AP]M/);
+    expect(initialFrame).not.toContain("Psychedelic plasma");
     expect(initialFrame).toContain(WELCOME_TAGLINE);
     expect(initialFrame).not.toContain("▲ Claudex");
 
@@ -228,7 +228,7 @@ describe("Root — cycle de vie du header", () => {
     await press(terminal, "\r");
     await vi.waitFor(() => {
       const output = terminal.chunks.join("");
-      expect(output).toContain("Commandes");
+      expect(output).toContain("Commands");
       expect(output).toContain("/handoff");
       expect(output).toContain("/decide");
     });
@@ -254,9 +254,9 @@ describe("Root — cycle de vie du header", () => {
 
     await vi.waitFor(() => {
       const output = terminal.chunks.join("").replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
-      expect(output).toContain("Décisions actées");
-      expect(output).toContain("Aucune décision actée.");
-      expect(output).not.toContain("# Décisions");
+      expect(output).toContain("Confirmed decisions");
+      expect(output).toContain("No confirmed decisions.");
+      expect(output).not.toContain("# Decisions");
       expect(output).toContain("PgUp/PgDn");
     });
 
@@ -282,11 +282,11 @@ describe("Root — cycle de vie du header", () => {
 
     const frameChunk = [...terminal.chunks]
       .reverse()
-      .find((chunk) => chunk.includes("Opus 5") && chunk.includes("Décrivez la problématique"));
+      .find((chunk) => chunk.includes("Opus 5") && chunk.includes("Describe the technical question"));
     expect(frameChunk).toBeDefined();
     const frame = frameChunk!.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
-    expect(frame.indexOf("Opus 5")).toBeLessThan(frame.indexOf("Décrivez la problématique"));
-    expect(frame).toContain("↑↓ 1/4 · Tab ou Entrée choisir · Échap fermer");
+    expect(frame.indexOf("Opus 5")).toBeLessThan(frame.indexOf("Describe the technical question"));
+    expect(frame).toContain("↑↓ 1/4 · Tab or Enter select · Esc close");
 
     await press(terminal, "\u001b[B");
     await press(terminal, "\t");
@@ -365,7 +365,7 @@ describe("Root — cycle de vie du header", () => {
 
     await vi.waitFor(() => {
       expect(terminal.chunks.join("").replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "")).toContain(
-        "3 décisions actées",
+        "3 confirmed decisions",
       );
     });
     app.unmount();
@@ -390,9 +390,9 @@ describe("Root — cycle de vie du header", () => {
 
     await vi.waitFor(() => {
       const output = terminal.chunks.join("").replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
-      expect(output).toContain("Sujet : /Users/me/app.ts:12 TypeError at main");
+      expect(output).toContain("Topic: /Users/me/app.ts:12 TypeError at main");
     });
-    expect(terminal.chunks.join("")).not.toContain("Pas de débat en cours");
+    expect(terminal.chunks.join("")).not.toContain("No debate is running");
     app.unmount();
   });
 

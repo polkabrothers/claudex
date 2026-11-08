@@ -102,7 +102,7 @@ export function Root(props: { cwd: string; initialTopic?: string }) {
               .map(([component, message]) => `${component}: ${message}`)
               .join(" · ");
             pending.stage = "shutdown";
-            const message = `Arrêt incomplet (${detail}). /retry retente l'arrêt sans perdre la session.`;
+            const message = `Incomplete shutdown (${detail}). /retry tries again without losing the session.`;
             setCoordinatorState({ kind: "shutdown-failed", destination: pending.destination, message });
             return { ok: false, message };
           }
@@ -116,8 +116,8 @@ export function Root(props: { cwd: string; initialTopic?: string }) {
           } catch (error) {
             const detail = error instanceof Error ? error.message : String(error);
             const message =
-              `Arrêt terminé, mais archivage impossible (${detail}). ` +
-              "/retry retente l'archive ; /new --discard ou /quit --discard l'abandonne explicitement.";
+              `Shutdown completed, but archiving failed (${detail}). ` +
+              "/retry tries the archive again; /new --discard or /quit --discard explicitly abandons it.";
             setCoordinatorState({ kind: "archive-failed", destination: pending.destination, message });
             return { ok: false, message };
           }
@@ -126,7 +126,7 @@ export function Root(props: { cwd: string; initialTopic?: string }) {
         finishTerminal(pending);
         return {
           ok: true,
-          message: pending.archive ? "Session arrêtée et archivée." : "Entrée sans sujet refermée.",
+          message: pending.archive ? "Session stopped and archived." : "No-topic entry closed.",
         };
       })().finally(() => {
         terminalOperationRef.current = null;
@@ -156,13 +156,13 @@ export function Root(props: { cwd: string; initialTopic?: string }) {
           if (existing.stage !== "archive") {
             return Promise.resolve({
               ok: false,
-              message: "--discard n'est autorisé qu'après un échec d'archivage.",
+              message: "--discard is allowed only after an archive failure.",
             });
           }
           finishTerminal(existing);
           return Promise.resolve({
             ok: true,
-            message: "Archive abandonnée explicitement ; la session fermée a été réinitialisée.",
+            message: "Archive explicitly discarded; the closed session has been reset.",
           });
         }
 
@@ -170,22 +170,22 @@ export function Root(props: { cwd: string; initialTopic?: string }) {
           ok: false,
           message:
             existing.stage === "archive"
-              ? "Archivage en échec : utilise /retry ou une commande --discard explicite."
-              : "Arrêt en échec : utilise /retry.",
+              ? "Archive failed: use /retry or an explicit --discard command."
+              : "Shutdown failed: use /retry.",
         });
       }
 
       if (discard) {
         return Promise.resolve({
           ok: false,
-          message: "--discard n'est autorisé qu'après un échec d'archivage.",
+          message: "--discard is allowed only after an archive failure.",
         });
       }
 
       const current = sessionRef.current;
       if (!current) {
         if (destination === "quit") exit();
-        return Promise.resolve({ ok: true, message: "Aucune session active." });
+        return Promise.resolve({ ok: true, message: "No active session." });
       }
 
       const pending: PendingTerminal = {
@@ -207,46 +207,46 @@ export function Root(props: { cwd: string; initialTopic?: string }) {
         exit();
         return {
           ok: true,
-          message: "Sortie d'urgence demandée : la dernière session peut ne pas avoir été archivée.",
+          message: "Emergency exit requested: the latest session may not have been archived.",
         };
       }
 
       if (request.kind === "retry") {
         const pending = pendingTerminalRef.current;
-        if (!pending) return { ok: false, message: "Aucune opération à retenter." };
+        if (!pending) return { ok: false, message: "No operation to retry." };
         return executeTerminal(pending);
       }
 
       if (request.kind === "save") {
         if (saveOperationRef.current) return saveOperationRef.current;
         const current = sessionRef.current;
-        if (!current) return { ok: false, message: "Aucune session à enregistrer." };
+        if (!current) return { ok: false, message: "No session to save." };
         if (current.lifecycle !== "open" || coordinatorState.kind !== "idle") {
           return {
             ok: false,
-            message: "Instantané refusé pendant une fermeture ; attends un état stable ou utilise /retry.",
+            message: "Snapshot refused during shutdown; wait for a stable state or use /retry.",
           };
         }
         if (current.topicStatus !== "accepted") {
           return {
             ok: false,
-            message: "Instantané refusé tant que le sujet n'a pas été validé.",
+            message: "Snapshot refused until the topic has been accepted.",
           };
         }
         if (current.isCancellationSettling()) {
           return {
             ok: false,
-            message: "Instantané refusé pendant la stabilisation de l'annulation.",
+            message: "Snapshot refused while cancellation is settling.",
           };
         }
 
         const snapshot = current.snapshot();
         const saveOperation = saveTranscript(cwd, topic, snapshot, { completeness: "partial" })
           .then<CoordinatorResponse, CoordinatorResponse>(
-            (savedTo) => ({ ok: true, message: `Instantané partiel enregistré dans ${savedTo}` }),
+            (savedTo) => ({ ok: true, message: `Partial snapshot saved to ${savedTo}` }),
             (error: unknown) => ({
               ok: false,
-              message: `Échec de l'instantané : ${error instanceof Error ? error.message : String(error)}`,
+              message: `Snapshot failed: ${error instanceof Error ? error.message : String(error)}`,
             }),
           )
           .finally(() => {
@@ -276,9 +276,9 @@ export function Root(props: { cwd: string; initialTopic?: string }) {
       nextSession.on("topic-accepted", () => {
         if (devlogWritten) return;
         devlogWritten = true;
-        appendDevlog(cwd, `Session démarrée — sujet : ${sessionTitle(trimmed)}`).then(undefined, (error: unknown) => {
+        appendDevlog(cwd, `Session started — topic: ${sessionTitle(trimmed)}`).then(undefined, (error: unknown) => {
           setCoordinatorNotice(
-            `Sujet validé, mais écriture du devlog impossible : ${
+            `Topic accepted, but the devlog could not be written: ${
               error instanceof Error ? error.message : String(error)
             }`,
           );

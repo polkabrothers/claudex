@@ -210,11 +210,11 @@ describe("Scheduler", () => {
       scheduler.start("Test topic");
 
       await vi.waitFor(() => expect(agents.claude.isPending()).toBe(true));
-      expect(agents.claude.lastMessage).toContain("tu es Claude");
+      expect(agents.claude.lastMessage).toContain("you are Claude");
       agents.claude.complete("Ma question\n\n<<CONTINUE>>");
 
       await vi.waitFor(() => expect(agents.codex.isPending()).toBe(true));
-      expect(agents.codex.lastMessage).toContain("tu es Codex");
+      expect(agents.codex.lastMessage).toContain("you are Codex");
       expect(agents.codex.lastMessage).toContain("[Claude → Codex]\nMa question");
     });
 
@@ -232,7 +232,7 @@ describe("Scheduler", () => {
       await vi.waitFor(() => expect(agents.claude.isPending()).toBe(true));
       const message = agents.claude.lastMessage ?? "";
       expect(message).toContain("[Codex → Claude]\nQuestion de Codex");
-      expect(message).toContain("[Utilisateur → Claude]\nMon avis");
+      expect(message).toContain("[User → Claude]\nMon avis");
       // Attribution is rendered, never baked into the stored text.
       expect(message).not.toContain("[Message de l'utilisateur]");
     });
@@ -649,7 +649,7 @@ describe("Scheduler", () => {
 
       await vi.waitFor(() => expect(agents.claude.getSendCount()).toBe(2));
       expect(agents.claude.lastMessage).toContain("Precision");
-      expect(agents.claude.lastMessage).toContain("tu es Claude");
+      expect(agents.claude.lastMessage).toContain("you are Claude");
     });
 
     it("should send the debate rules with an intervention that follows a failed first turn", async () => {
@@ -665,7 +665,7 @@ describe("Scheduler", () => {
 
       await vi.waitFor(() => expect(agents.codex.getSendCount()).toBe(2));
       expect(agents.codex.lastMessage).toContain("Use the default model");
-      expect(agents.codex.lastMessage).toContain("tu es Codex");
+      expect(agents.codex.lastMessage).toContain("you are Codex");
     });
 
     it("should not repeat the debate rules when a failed turn is retried after a delivered one", async () => {
@@ -1118,17 +1118,16 @@ describe("Scheduler", () => {
   });
 });
 
-describe("règles du débat", () => {
+describe("debate rules", () => {
   const claudeSide = CONSENSUS_INSTRUCTIONS("Claude", "Codex");
   const codexSide = CONSENSUS_INSTRUCTIONS("Codex", "Claude");
 
   /**
-   * La règle de preuve nommait Claude et Codex : elle disait à l'un que sa
-   * lecture ne produit pas de faits, et à l'autre que son contradicteur ne peut
-   * rien vérifier. Les deux agents doivent recevoir exactement les mêmes règles,
-   * aux deux identités près.
+   * The old evidence rule named Claude and Codex: it told one that reading
+   * produces no facts and the other that its counterpart could verify nothing.
+   * Both agents must receive exactly the same rules, apart from their identities.
    */
-  it("donne les mêmes règles aux deux agents, aux identités près", () => {
+  it("gives the same rules to both agents, apart from their identities", () => {
     const swapped = claudeSide
       .replace(/Claude/gu, "__OTHER__")
       .replace(/Codex/gu, "Claude")
@@ -1136,30 +1135,30 @@ describe("règles du débat", () => {
     expect(swapped).toBe(codexSide);
   });
 
-  it("exige la commande et la sortie plutôt que la confiance", () => {
-    expect(claudeSide).toContain("la commande exacte et sa sortie brute");
-    expect(claudeSide).toContain("Exiger la preuve fait partie de ton rôle");
+  it("requires a command and output instead of trust", () => {
+    expect(claudeSide).toContain("the exact command and its raw output");
+    expect(claudeSide).toContain("Requiring evidence is as much part of your role");
   });
 
-  // Sinon la sortie valide la moins chère, dans le doute, est l'accord.
-  it("fait payer le consensus au moins autant que la poursuite", () => {
-    expect(claudeSide).toContain("examiné au moins une alternative sérieuse");
+  // Otherwise, under uncertainty, agreement is the cheapest valid exit.
+  it("makes consensus at least as demanding as continuing", () => {
+    expect(claudeSide).toContain("considered at least one serious alternative");
   });
 
-  // Claudex n'écrit plus dans CLAUDE.md ni AGENTS.md : ces règles sont le seul
-  // chemin par lequel les deux agents apprennent que la mémoire existe. Elle est
-  // nommée, pas recopiée, pour ne pas la refacturer à chaque appel.
-  it("nomme la mémoire versionnée du projet sans l'importer", () => {
+  // Claudex no longer writes CLAUDE.md or AGENTS.md. These rules are the only
+  // way both agents learn that memory exists. It is named rather than inlined to
+  // avoid re-billing its content for every call.
+  it("names the versioned project memory without importing it", () => {
     expect(claudeSide).toContain(".claudex/memory/decisions.md");
     expect(claudeSide).toContain(".claudex/memory/limits.md");
     expect(claudeSide).not.toContain("@.claudex");
     expect(claudeSide).not.toContain("devlog.md");
   });
 
-  // Contrainte d'affichage appliquée par le renderer : l'imposer au modèle
-  // dégrade les handoffs, qui sont des documents Markdown autoportants.
-  it("n'impose aucune contrainte Markdown aux agents", () => {
+  // The renderer applies this display constraint. Imposing it on the model
+  // degrades handoffs, which are self-contained Markdown documents.
+  it("does not impose Markdown constraints on agents", () => {
     expect(claudeSide).not.toContain("Markdown");
-    expect(claudeSide).toContain("aucun emoji");
+    expect(claudeSide).toContain("Do not use emoji");
   });
 });

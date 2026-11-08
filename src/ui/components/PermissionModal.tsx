@@ -32,12 +32,12 @@ export function PermissionModal(props: {
         <Text color={style.color} bold>
           {style.badge}
         </Text>
-        <Text> demande une autorisation : </Text>
+        <Text> requests permission: </Text>
         <Text bold>{request.toolName}</Text>
         {preview ? <Text dimColor> — {preview}</Text> : null}
       </Text>
       <Text wrap="truncate-end">
-        <Text color="greenBright">[y]</Text> autoriser · <Text color="redBright">[n]</Text> refuser
+        <Text color="greenBright">[y]</Text> allow · <Text color="redBright">[n]</Text> deny
       </Text>
     </Box>
   );

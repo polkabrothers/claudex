@@ -187,7 +187,7 @@ describe("DebateView — viewport plein écran", () => {
     t.chunks.length = 0;
 
     await press(t, "/");
-    await vi.waitFor(() => expect(t.chunks.join("")).toContain("/claude <texte>"));
+    await vi.waitFor(() => expect(t.chunks.join("")).toContain("/claude <text>"));
 
     t.chunks.length = 0;
     await press(t, "\u001b");
@@ -219,7 +219,7 @@ describe("DebateView — viewport plein écran", () => {
     expect(frameChunk).toBeDefined();
     const frame = frameChunk!.replace(ANSI_SEQUENCE, "");
     expect(frame.indexOf("gpt-5.6-sol")).toBeLessThan(frame.indexOf("‣"));
-    expect(frame).toContain("↑↓ 1/2 · Tab ou Entrée choisir · Échap fermer");
+    expect(frame).toContain("↑↓ 1/2 · Tab or Enter select · Esc close");
     expect(frame).not.toContain("fake-model + fake-model");
 
     await press(t, "\u001b[B");
@@ -340,7 +340,7 @@ describe("DebateView — viewport plein écran", () => {
     await tick();
 
     const output = t.chunks.join("");
-    expect(output).toContain("Sujet : Sujet de test");
+    expect(output).toContain("Topic: Sujet de test");
     expect(output).toContain("quelques mots");
 
     t.app.unmount();
@@ -428,8 +428,8 @@ describe("DebateView — viewport plein écran", () => {
     await tick();
     const output = t.chunks.join("");
     expect(output.split("\u25b2 Claudex").length - 1).toBe(0);
-    expect(output).toContain("Sujet : Sujet de test");
-    expect(output).not.toContain(":: Sujet : Sujet de test");
+    expect(output).toContain("Topic: Sujet de test");
+    expect(output).not.toContain(":: Topic: Sujet de test");
 
     const footerFrame = [...t.chunks]
       .reverse()
@@ -456,7 +456,7 @@ describe("DebateView — viewport plein écran", () => {
 
     const frame = [...t.chunks].reverse().find((chunk) => chunk.includes("PREMIÈRE INTERVENTION"));
     expect(frame).toBeDefined();
-    expect(frame!.replace(ANSI_SEQUENCE, "")).toContain("/sujet pour le voir en entier");
+    expect(frame!.replace(ANSI_SEQUENCE, "")).toContain("/topic to view all");
     for (const chunk of t.chunks) {
       expect((chunk.match(CURSOR_UP) ?? []).length).toBeLessThan(t.stdout.rows);
     }
@@ -477,17 +477,17 @@ describe("DebateView — viewport plein écran", () => {
     t.app.unmount();
   });
 
-  it("réaffiche le sujet complet avec /sujet", async () => {
+  it("shows the complete topic with /topic", async () => {
     const t = mount();
     await vi.waitFor(() => expect(t.agents.claude.pending).toBe(true));
     t.chunks.length = 0;
 
-    await press(t, "/sujet");
+    await press(t, "/topic");
     await press(t, "\r");
 
     await vi.waitFor(() => {
       const output = t.chunks.join("").replace(ANSI_SEQUENCE, "");
-      expect(output).toContain("Sujet complet");
+      expect(output).toContain("Complete topic");
       expect(output).toContain("Sujet de test");
     });
     t.app.unmount();
@@ -502,7 +502,7 @@ describe("DebateView — viewport plein écran", () => {
 
     await vi.waitFor(() => {
       const output = t.chunks.join("").replace(ANSI_SEQUENCE, "");
-      expect(output).toContain("fake-model · ctx 75% libre + fake-model · ctx —");
+      expect(output).toContain("fake-model · ctx 75% free + fake-model · ctx —");
     });
     t.app.unmount();
   });
@@ -523,27 +523,27 @@ describe("helpers d'amorçage", () => {
 
 describe("sujet dans le header", () => {
   it("laisse un sujet court tel quel", () => {
-    expect(topicHeaderLines("Sujet de test", 60)).toEqual(["Sujet : Sujet de test"]);
+    expect(topicHeaderLines("Sujet de test", 60)).toEqual(["Topic: Sujet de test"]);
   });
 
-  it("borne un long sujet à trois lignes qui renvoient vers /sujet", () => {
+  it("limits a long topic to three lines that refer to /topic", () => {
     const lines = topicHeaderLines("mot ".repeat(500), 60);
 
     expect(lines).toHaveLength(3);
-    expect(lines[2]).toMatch(/… \/sujet pour le voir en entier$/);
+    expect(lines[2]).toMatch(/… \/topic to view all$/);
     for (const line of lines) expect(displayWidth(line)).toBeLessThanOrEqual(60);
   });
 
   it("garde un sujet d'exactement trois lignes sans renvoi", () => {
-    const lines = topicHeaderLines("x".repeat(60 * 3 - "Sujet : ".length), 60);
+    const lines = topicHeaderLines("x".repeat(60 * 3 - "Topic: ".length), 60);
 
     expect(lines).toHaveLength(3);
-    expect(lines.join("")).not.toContain("/sujet");
+    expect(lines.join("")).not.toContain("/topic");
   });
 
   it("affiche un sujet multiligne sur une seule ligne logique", () => {
     expect(topicHeaderLines("première\nseconde\r\n\ttroisième", 60)).toEqual([
-      "Sujet : première seconde troisième",
+      "Topic: première seconde troisième",
     ]);
   });
 });

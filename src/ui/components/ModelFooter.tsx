@@ -34,7 +34,7 @@ export function ModelFooter(props: {
     const remaining = contextRemainingPercent(props.contextUsage?.[agent]);
     return remaining === null
       ? `${props.models[agent]} · ctx —`
-      : `${props.models[agent]} · ctx ${remaining} libre`;
+      : `${props.models[agent]} · ctx ${remaining} free`;
   };
 
   return (

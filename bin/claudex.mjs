@@ -7,11 +7,11 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const cliEntry = path.join(here, "..", "src", "cli.tsx");
 const tsxCli = fileURLToPath(import.meta.resolve("tsx/cli"));
 
-// tsx cherche le tsconfig depuis le cwd, or le cwd est le projet de
-// l'utilisateur, pas celui-ci. Sans ce flag, un dossier sans tsconfig fait
-// retomber esbuild sur le JSX classique (`React.createElement`) et cli.tsx
-// meurt sur `React is not defined` ; un dossier avec un tsconfig étranger
-// imposerait ses propres réglages. On épingle le nôtre.
+// tsx finds tsconfig from cwd, but cwd is the user's project rather than this
+// repository. Without this flag, a directory without tsconfig makes esbuild
+// fall back to classic JSX (`React.createElement`) and cli.tsx fails with
+// `React is not defined`; a directory with an unrelated tsconfig would impose
+// its own settings. Pin this repository's tsconfig instead.
 const tsconfig = path.join(here, "..", "tsconfig.json");
 
 const result = spawnSync(

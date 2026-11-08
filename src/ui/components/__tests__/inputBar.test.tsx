@@ -121,8 +121,8 @@ describe("InputBar — navigation contextuelle", () => {
     await press(terminal, "/mo");
 
     const output = terminal.output.join("").replace(ANSI_SEQUENCE, "");
-    expect(output).toContain("/model claude <nom>");
-    expect(output).toContain("/model codex <nom>");
+    expect(output).toContain("/model claude <name>");
+    expect(output).toContain("/model codex <name>");
     expect(output).not.toContain("/help —");
     expect(onPaletteChange).toHaveBeenLastCalledWith(true);
     terminal.app.unmount();
@@ -303,7 +303,7 @@ describe("InputBar — collage", () => {
     await paste(terminal, pasted);
 
     const frame = terminal.output.join("").replace(ANSI_SEQUENCE, "");
-    expect(frame).toContain("[Texte collé · 30 000 caractères]");
+    expect(frame).toContain("[Pasted text · 30 000 characters]");
     expect(frame).not.toContain("xxx");
     await press(terminal, "\r");
     expect(terminal.onSubmit).toHaveBeenCalledWith(pasted, { literal: true });
@@ -318,7 +318,7 @@ describe("InputBar — collage", () => {
     await paste(terminal, "a\r\nb\rc");
 
     expect(terminal.output.join("").replace(ANSI_SEQUENCE, "")).toContain(
-      "[Texte collé · 5 caractères]",
+      "[Pasted text · 5 characters]",
     );
     await press(terminal, "\r");
     expect(terminal.onSubmit).toHaveBeenCalledWith("a\nb\nc", { literal: true });
@@ -334,7 +334,7 @@ describe("InputBar — collage", () => {
     await paste(terminal, pasted);
 
     const frame = terminal.output.join("").replace(ANSI_SEQUENCE, "");
-    expect(frame).not.toContain("Texte collé");
+    expect(frame).not.toContain("Pasted text");
     expect(frame).toContain("yyy");
     await press(terminal, "\r");
     expect(terminal.onSubmit).toHaveBeenCalledWith(pasted);
@@ -349,7 +349,7 @@ describe("InputBar — collage", () => {
     await paste(terminal, "y".repeat(501));
 
     expect(terminal.output.join("").replace(ANSI_SEQUENCE, "")).toContain(
-      "[Texte collé · 501 caractères]",
+      "[Pasted text · 501 characters]",
     );
     terminal.app.unmount();
   });
@@ -390,8 +390,8 @@ describe("InputBar — collage", () => {
     await paste(terminal, "second\npaste");
 
     const frame = terminal.output.join("").replace(ANSI_SEQUENCE, "");
-    expect(frame).toContain("[Texte collé #1 · 11 caractères]");
-    expect(frame).toContain("[Texte collé #2 · 12 caractères]");
+    expect(frame).toContain("[Pasted text #1 · 11 characters]");
+    expect(frame).toContain("[Pasted text #2 · 12 characters]");
     await press(terminal, "\r");
     expect(terminal.onSubmit).toHaveBeenCalledWith("first\npastesecond\npaste", { literal: true });
     terminal.app.unmount();

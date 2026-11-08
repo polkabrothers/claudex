@@ -1,6 +1,6 @@
 # Claudex
 
-[![CI](https://github.com/hooop/claudex/actions/workflows/ci.yml/badge.svg)](https://github.com/hooop/claudex/actions/workflows/ci.yml)
+[![CI](https://github.com/polkabrothers/claudex/actions/workflows/ci.yml/badge.svg)](https://github.com/polkabrothers/claudex/actions/workflows/ci.yml)
 
 Claudex runs a structured debate between Claude Code and Codex on a technical question, inside a single terminal, with a human in control. It replaces the manual copy-paste of one agent's answer into the other and keeps the discussion attached to the project.
 
@@ -8,7 +8,7 @@ Claudex runs a structured debate between Claude Code and Codex on a technical qu
 
 ## How it works
 
-*The application's own interface and messages are in French.*
+*The application's interface and messages are in English.*
 
 A session always follows the same cycle:
 
@@ -40,7 +40,7 @@ The topic is not restricted to architecture. Anything settled before code gets w
 
 **Full-screen terminal interface.** The header and input stay fixed while the transcript scrolls independently. Use the wheel or `↑`/`↓`, `Page Up`/`Page Down`, and `Home`/`End` to navigate; the complete transcript is archived in `.claudex/memory/transcripts/`.
 
-**Long pastes.** A paste longer than 500 characters, or spanning several lines, appears in the input as a single `[Texte collé · N caractères]` label. Its full text, line breaks included, is sent on Enter and shown in the transcript; the fixed header shows only the first lines of the topic, and `/sujet` prints it in full.
+**Long pastes.** A paste longer than 500 characters, or spanning several lines, appears in the input as a single `[Pasted text · N characters]` label. Its full text, line breaks included, is sent on Enter and shown in the transcript; the fixed header shows only the first lines of the topic, and `/topic` prints it in full.
 
 ## What leaves the machine
 
@@ -108,7 +108,7 @@ Sign in on first launch, then quit. Confirm with `codex --version`.
 ### 4. Claudex
 
 ```bash
-git clone https://github.com/hooop/claudex.git
+git clone https://github.com/polkabrothers/claudex.git
 cd claudex
 npm install
 npm link
@@ -133,7 +133,7 @@ This runs the strict TypeScript typecheck, ESLint, then the complete test suite.
 | Message | Cause and fix |
 |---|---|
 | `command not found: claudex` | Step 4 did not complete. Run `npm link` again from the `claudex` folder. |
-| `Claudex a besoin d'un vrai terminal interactif (TTY)` | Claudex was started inside a script or a pipe. Start it directly in a terminal. |
+| `Claudex needs a real interactive terminal (TTY)` | Claudex was started inside a script or a pipe. Start it directly in a terminal. |
 | `command not found: claude` or `codex` | Repeat step 2 or step 3. |
 | The debate fails on the first turn | One of the two accounts is not signed in. Run `claude` and `codex` separately to check. |
 | Claude never answers, the turn never ends | An outbound firewall that rules per program (LuLu, Little Snitch) sees each install location of the Claude Code engine bundled with the SDK as a new program, and blocks its requests until you allow it. Allow `node_modules/@anthropic-ai/claude-agent-sdk-<platform>/claude` inside the `claudex` folder, for example `claude-agent-sdk-darwin-arm64` on an Apple silicon Mac. |
@@ -175,7 +175,7 @@ Talking to the agents:
 | `/claude <text>` | Message addressed to Claude only |
 | `/codex <text>` | Message addressed to Codex only |
 | `/model claude\|codex <name>` | Changes an agent's model, including before the debate starts |
-| `/sujet` | Prints the complete accepted topic in the transcript |
+| `/topic` | Prints the complete accepted topic in the transcript |
 
 Recording:
 

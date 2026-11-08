@@ -55,14 +55,14 @@ describe("TranscriptStream", () => {
     const e = entry({
       from: "system",
       kind: "system",
-      text: `Sujet : ${"architecture distribuée ".repeat(5)}\navec reprise`,
+      text: `Topic: ${"distributed architecture ".repeat(5)}\nwith recovery`,
     });
     const canonicalText = e.text;
 
     stream.entry(e);
 
     const rendered = plain().trimEnd();
-    expect(rendered).toMatch(/^:: Sujet : /);
+    expect(rendered).toMatch(/^:: Topic: /);
     expect(rendered).toMatch(/\.\.\.$/);
     expect(displayWidth(rendered)).toBeLessThanOrEqual(40);
     expect(rendered).not.toContain("\n");
@@ -71,11 +71,11 @@ describe("TranscriptStream", () => {
 
   it("laisse deux lignes vides entre le sujet et le premier tour de Claude", () => {
     const { stream, plain } = harness();
-    stream.entry(entry({ from: "system", kind: "system", text: "Sujet : architecture" }));
+    stream.entry(entry({ from: "system", kind: "system", text: "Topic: architecture" }));
     stream.entryStarted(entry({ from: "claude", kind: "message" }));
 
     const lines = plain().split("\n");
-    const subject = lines.findIndex((line) => line.includes("Sujet : architecture"));
+    const subject = lines.findIndex((line) => line.includes("Topic: architecture"));
     const claude = lines.findIndex((line) => line.includes("Claude"));
     expect(lines.slice(subject + 1, claude)).toEqual(["", ""]);
   });
@@ -177,29 +177,29 @@ describe("TranscriptStream", () => {
     };
 
     it("nomme la décision et à qui la main passe", () => {
-      expect(verdictOf("claude", "continue")).toContain("-> poursuit · passe la main à Codex");
-      expect(verdictOf("codex", "continue")).toContain("-> poursuit · passe la main à Claude");
+      expect(verdictOf("claude", "continue")).toContain("-> continues · hands over to Codex");
+      expect(verdictOf("codex", "continue")).toContain("-> continues · hands over to Claude");
     });
 
     // Un accord isolé laisse le débat tourner, la paire l'arrête : les deux
     // situations ne doivent pas se lire pareil.
     it("distingue le premier accord de celui qui clôt le débat", () => {
       const premier = verdictOf("claude", "consensus");
-      expect(premier).toContain("Claude est prêt pour un consensus");
-      expect(premier).toContain("au tour de Codex");
+      expect(premier).toContain("Claude is ready for consensus");
+      expect(premier).toContain("Codex's turn");
       expect(premier).not.toContain("terminé");
 
       const dernier = verdictOf("codex", "consensus", true);
-      expect(dernier).toContain("Consensus approuvé");
-      expect(dernier).toContain("le débat est clos");
+      expect(dernier).toContain("Consensus confirmed");
+      expect(dernier).toContain("the debate is complete");
     });
 
     it("distingue un accord d'une attente humaine", () => {
-      expect(verdictOf("codex", "wait-human")).toContain("[pause] attend ta réponse");
+      expect(verdictOf("codex", "wait-human")).toContain("[pause] waiting for your reply");
     });
 
     it("dit explicitement qu'un tour n'a rien signalé", () => {
-      expect(verdictOf("claude", null)).toContain("[!] aucune décision signalée");
+      expect(verdictOf("claude", null)).toContain("[!] no decision signaled");
     });
 
     // Muet à l'origine, quand un non-sujet fermait la session : le retour à
@@ -207,8 +207,8 @@ describe("TranscriptStream", () => {
     // tour doit annoncer sa décision et la suite comme tous les autres.
     it("annonce qu'il n'y a pas de sujet, et ce qui va se passer", () => {
       const verdict = verdictOf("claude", "no-topic");
-      expect(verdict).toContain("Aucun sujet à débattre");
-      expect(verdict).toContain("prochain message");
+      expect(verdict).toContain("No technical topic to debate");
+      expect(verdict).toContain("your next message");
     });
 
     it("reste muet sur la synthèse, qui ne décide rien", () => {
@@ -217,7 +217,7 @@ describe("TranscriptStream", () => {
       stream.entryStarted(e);
       stream.chunk(e.id, "Spécification finale.\n");
       stream.entryCompleted(e.id, { status: "ok", signal: null });
-      expect(plain()).not.toContain("aucune décision signalée");
+      expect(plain()).not.toContain("no decision signaled");
     });
 
     it("laisse une erreur remplacer le verdict", () => {
@@ -225,8 +225,8 @@ describe("TranscriptStream", () => {
       const e = entry({ from: "claude", kind: "message" });
       stream.entryStarted(e);
       stream.entryCompleted(e.id, { status: "error", message: "réseau coupé" });
-      expect(plain()).toContain("Erreur : réseau coupé");
-      expect(plain()).not.toContain("poursuit");
+      expect(plain()).toContain("Error: réseau coupé");
+      expect(plain()).not.toContain("continues");
     });
   });
 
@@ -235,13 +235,13 @@ describe("TranscriptStream", () => {
     const e1 = entry({ from: "codex", kind: "message" });
     err.stream.entryStarted(e1);
     err.stream.entryCompleted(e1.id, { status: "error", message: "réseau coupé" });
-    expect(err.plain()).toContain("Erreur : réseau coupé");
+    expect(err.plain()).toContain("Error: réseau coupé");
 
     const cancelled = harness();
     const e2 = entry({ from: "codex", kind: "message" });
     cancelled.stream.entryStarted(e2);
     cancelled.stream.entryCompleted(e2.id, { status: "cancelled" });
-    expect(cancelled.plain()).toContain("(Annulé)");
+    expect(cancelled.plain()).toContain("(Cancelled)");
   });
 
   it("distingue visuellement Claude, Codex et l'humain", () => {
