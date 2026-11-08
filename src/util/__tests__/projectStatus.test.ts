@@ -45,7 +45,7 @@ describe("getProjectStatus — models shown at launch", () => {
 
     const status = getProjectStatus(root);
 
-    expect(status.claudeDefaultModel).toBe("Sonnet 5");
+    expect(status.claudeDefaultModel).toBe("Sonnet");
     expect(status.codexDefaultModel).toBe("gpt-5.6-sol");
     expect(status.codexDefaultEffort).toBe("max");
   });
@@ -81,8 +81,10 @@ describe("getProjectStatus — models shown at launch", () => {
 });
 
 describe("formatClaudeModel", () => {
-  it("shares picker labels and formats resolved IDs", () => {
-    expect(formatClaudeModel("opus")).toBe("Opus 5");
+  it("formats aliases without guessing their versions and formats resolved IDs", () => {
+    expect(formatClaudeModel("opus")).toBe("Opus");
+    expect(formatClaudeModel("claude-opus-5")).toBe("Opus 5");
+    expect(formatClaudeModel("claude-opus-5-5")).toBe("Opus 5.5");
     expect(formatClaudeModel("claude-sonnet-5-20260801")).toBe("Sonnet 5");
   });
 });

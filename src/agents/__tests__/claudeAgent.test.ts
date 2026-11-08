@@ -143,16 +143,17 @@ describe("ClaudeAgent streaming", () => {
       ]) as never,
     );
 
-    const agent = new ClaudeAgent("opus", "Opus 5");
+    const agent = new ClaudeAgent("opus");
+    expect(agent.currentModel()).toBe("Opus");
     await agent.send("Topic", { cwd: "/tmp", writeAccess: false });
 
     expect(agent.currentModel()).toBe("Opus 5.5");
   });
 
-  it("shows the picker label as soon as a model is selected", () => {
+  it("shows the selected alias until Claude resolves it", () => {
     const agent = new ClaudeAgent();
     agent.setModel("sonnet");
-    expect(agent.currentModel()).toBe("Sonnet 5");
+    expect(agent.currentModel()).toBe("Sonnet");
     expect(agent.hasExplicitModel()).toBe(true);
   });
 

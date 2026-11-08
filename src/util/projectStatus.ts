@@ -22,17 +22,8 @@ export interface ProjectStatus {
   autonomyBudget: AutonomyBudget | null;
 }
 
-const CLAUDE_ALIAS_LABELS: Record<string, string> = {
-  opus: "Opus 5",
-  sonnet: "Sonnet 5",
-  haiku: "Haiku 4.5",
-  fable: "Fable 5",
-};
-
-/** "claude-sonnet-5" -> "Sonnet 5", "claude-opus-4-7" -> "Opus 4.7", drops trailing snapshot dates. */
+/** Format the model ID or alias as given, leaving the version unknown for aliases. */
 export function formatClaudeModel(id: string): string {
-  const alias = CLAUDE_ALIAS_LABELS[id.toLowerCase()];
-  if (alias) return alias;
   const noDate = id.replace(/-\d{8}$/, "");
   const stripped = noDate.replace(/^claude-/, "");
   const parts = stripped.split("-");
