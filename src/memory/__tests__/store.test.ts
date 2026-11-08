@@ -6,10 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   initMemoryScaffold,
   rememberAutonomyBudget,
+  rememberModelSelection,
   saveHandoff,
   saveTranscript,
   sessionTitle,
 } from "../store.js";
+import { getProjectStatus } from "../../util/projectStatus.js";
 
 describe("saveHandoff", () => {
   let cwd: string;
@@ -170,6 +172,23 @@ describe("transcript snapshots and project policy", () => {
     ) as Record<string, unknown>;
     expect(state).toEqual({
       autonomyBudget: { kind: "automatic-starts", maximum: 20 },
+    });
+  });
+
+  it("restores the latest model and effort per agent alongside the autonomy policy", async () => {
+    await Promise.all([
+      rememberModelSelection(cwd, "claude", "sonnet", "medium"),
+      rememberAutonomyBudget(cwd, { kind: "automatic-starts", maximum: 3 }),
+      rememberModelSelection(cwd, "codex", "gpt-6.1-sol", "high"),
+      rememberModelSelection(cwd, "claude", "opus"),
+    ]);
+
+    expect(getProjectStatus(cwd)).toMatchObject({
+      modelSelections: {
+        claude: { model: "opus", effort: undefined },
+        codex: { model: "gpt-6.1-sol", effort: "high" },
+      },
+      autonomyBudget: { kind: "automatic-starts", maximum: 3 },
     });
   });
 });

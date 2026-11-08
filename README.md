@@ -183,7 +183,9 @@ keys to highlight a model, then press Enter or Tab. If the model advertises
 reasoning effort levels, choose one and press Enter or Tab again. Choose
 **Default** to use the provider's default for that model. Esc goes back from
 the effort list or closes the model list. Selections apply on the agent's next
-turn and last until you change them or quit Claudex.
+turn. Claudex remembers the last model and effort you selected for each agent
+when you relaunch it in the same project. A direct model ID selection also
+replaces the previously saved effort.
 
 Claudex loads the catalog from the bundled Claude Agent SDK or the local Codex
 client. Claude discovery runs outside the current project, so project or

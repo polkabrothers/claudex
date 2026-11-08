@@ -72,6 +72,7 @@ export function DebateView(props: {
   coordinatorNotice: string | null;
   onLifecycleRequest: (request: LifecycleRequest) => Promise<CoordinatorResponse>;
   onAutonomySelected: (budget: AutonomyBudget, remember: boolean) => Promise<void>;
+  onModelSelected: (agent: AgentId, model: string, effort?: string) => Promise<void>;
 }) {
   const {
     session,
@@ -306,6 +307,14 @@ export function DebateView(props: {
     }
   });
 
+  function selectModel(agent: AgentId, model: string, effort?: string) {
+    session.setModel(agent, model, effort);
+    setContextUsage((current) => ({ ...current, [agent]: undefined }));
+    props.onModelSelected(agent, model, effort).catch(() => {
+      flash("Model selected, but the preference could not be saved.");
+    });
+  }
+
   async function handleSubmit(raw: string, options?: { literal: true }) {
     setCommandPaletteOpen(false);
     const cmd: Command = options?.literal
@@ -342,8 +351,7 @@ export function DebateView(props: {
           setModelPickerAgent(cmd.agent);
           return;
         }
-        session.setModel(cmd.agent, cmd.model);
-        setContextUsage((current) => ({ ...current, [cmd.agent]: undefined }));
+        selectModel(cmd.agent, cmd.model);
         return;
       case "implement": {
         const alreadyImplementing = phase === "implementation";
@@ -586,8 +594,7 @@ export function DebateView(props: {
                 loadModels={loadModels}
                 width={inputBarWidth(columns)}
                 onSelect={(model, effort) => {
-                  session.setModel(modelPickerAgent, model, effort);
-                  setContextUsage((current) => ({ ...current, [modelPickerAgent]: undefined }));
+                  selectModel(modelPickerAgent, model, effort);
                   setModelPickerAgent(null);
                 }}
                 onCancel={() => setModelPickerAgent(null)}

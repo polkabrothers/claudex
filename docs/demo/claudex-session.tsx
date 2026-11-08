@@ -166,6 +166,7 @@ const status: ProjectStatus = {
   claudeDefaultModel: "Opus 5",
   codexDefaultModel: "gpt-5.6-sol",
   codexDefaultEffort: "medium",
+  modelSelections: {},
 };
 
 function DemoApp() {
@@ -186,6 +187,7 @@ function DemoApp() {
         headerAnimation={headerAnimation}
         onHeaderAnimationChange={setHeaderAnimation}
         onStart={start}
+        onModelSelected={() => Promise.resolve()}
       />
     );
   }
@@ -201,6 +203,7 @@ function DemoApp() {
       coordinatorNotice={null}
       onLifecycleRequest={() => Promise.resolve({ ok: true, message: "Démo terminée." })}
       onAutonomySelected={() => Promise.resolve()}
+      onModelSelected={() => Promise.resolve()}
     />
   );
 }

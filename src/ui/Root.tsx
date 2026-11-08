@@ -6,6 +6,7 @@ import type { CodingAgent } from "../agents/types.js";
 import {
   appendDevlog,
   rememberAutonomyBudget,
+  rememberModelSelection,
   saveTranscript,
   sessionTitle,
 } from "../memory/store.js";
@@ -49,13 +50,22 @@ export function Root(props: { cwd: string; initialTopic?: string }) {
   const { exit } = useApp();
 
   const [status, setStatus] = useState(() => getProjectStatus(cwd));
-  const [agents] = useState<Record<AgentId, CodingAgent>>(() => ({
-    claude: new ClaudeAgent(
-      status.claudeConfiguredModel ?? undefined,
-      status.claudeDefaultModel ?? undefined,
-    ),
-    codex: new CodexAgent(undefined, codexInitialModelLabel(status)),
-  }));
+  const [agents] = useState<Record<AgentId, CodingAgent>>(() => {
+    const restored = {
+      claude: new ClaudeAgent(
+        status.claudeConfiguredModel ?? undefined,
+        status.claudeDefaultModel ?? undefined,
+      ),
+      codex: new CodexAgent(undefined, codexInitialModelLabel(status)),
+    };
+    for (const agent of ["claude", "codex"] as const) {
+      const selection = status.modelSelections[agent];
+      if (selection) restored[agent].setModel(selection.model, selection.effort);
+    }
+    return restored;
+  });
+  const saveModelSelection = (agent: AgentId, model: string, effort?: string) =>
+    rememberModelSelection(cwd, agent, model, effort);
   const [rememberedAutonomy, setRememberedAutonomy] = useState<AutonomyBudget | undefined>(
     status.autonomyBudget ?? undefined,
   );
@@ -324,6 +334,7 @@ export function Root(props: { cwd: string; initialTopic?: string }) {
         headerAnimation={headerAnimation}
         onHeaderAnimationChange={setHeaderAnimation}
         onStart={startTopic}
+        onModelSelected={saveModelSelection}
       />
     );
   }
@@ -339,6 +350,7 @@ export function Root(props: { cwd: string; initialTopic?: string }) {
       coordinatorNotice={coordinatorNotice}
       onLifecycleRequest={handleLifecycleRequest}
       onAutonomySelected={handleAutonomySelected}
+      onModelSelected={saveModelSelection}
     />
   );
 }

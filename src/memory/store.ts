@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { AutonomyBudget, TranscriptEntry } from "../types.js";
+import type { ModelSelection } from "../agents/types.js";
+import type { AgentId, AutonomyBudget, TranscriptEntry } from "../types.js";
 
 const MEMORY_DIR = ".claudex/memory";
 
@@ -42,6 +43,7 @@ async function ensureMemoryDir(cwd: string): Promise<void> {
 
 interface ClaudexState {
   autonomyBudget?: AutonomyBudget;
+  modelSelections?: Partial<Record<AgentId, ModelSelection>>;
 }
 
 const stateWrites = new Map<string, Promise<void>>();
@@ -50,7 +52,8 @@ async function readState(cwd: string): Promise<ClaudexState> {
   const p = path.join(cwd, STATE_FILE);
   if (!existsSync(p)) return {};
   try {
-    return JSON.parse(await readFile(p, "utf8")) as ClaudexState;
+    const state: unknown = JSON.parse(await readFile(p, "utf8"));
+    return state && typeof state === "object" && !Array.isArray(state) ? state : {};
   } catch {
     return {};
   }
@@ -59,6 +62,17 @@ async function readState(cwd: string): Promise<ClaudexState> {
 export async function rememberAutonomyBudget(cwd: string, budget: AutonomyBudget): Promise<void> {
   await updateState(cwd, (state) => {
     state.autonomyBudget = budget;
+  });
+}
+
+export async function rememberModelSelection(
+  cwd: string,
+  agent: AgentId,
+  model: string,
+  effort?: string,
+): Promise<void> {
+  await updateState(cwd, (state) => {
+    state.modelSelections = { ...state.modelSelections, [agent]: { model, effort } };
   });
 }
 

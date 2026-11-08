@@ -78,6 +78,7 @@ export function WelcomeScreen(props: {
   headerAnimation: HeaderAnimationId;
   onHeaderAnimationChange: (animation: HeaderAnimationId) => void;
   onStart: (topic: string) => void;
+  onModelSelected: (agent: AgentId, model: string, effort?: string) => Promise<void>;
 }) {
   const { cwd, agents, status, headerAnimation, onHeaderAnimationChange, onStart } = props;
   const { exit } = useApp();
@@ -98,6 +99,15 @@ export function WelcomeScreen(props: {
     [agents, cwd],
   );
 
+  function selectModel(agent: AgentId, model: string, effort?: string) {
+    agents[agent].setModel(model, effort);
+    setNotice(null);
+    bump((v) => v + 1);
+    props.onModelSelected(agent, model, effort).catch(() => {
+      setNotice("Model selected, but the preference could not be saved.");
+    });
+  }
+
   function handleSubmit(value: string, options?: { literal: true }) {
     if (options?.literal) {
       onStart(value);
@@ -112,9 +122,7 @@ export function WelcomeScreen(props: {
         setModelPickerAgent(cmd.agent);
         return;
       }
-      agents[cmd.agent].setModel(cmd.model);
-      setNotice(null);
-      bump((v) => v + 1); // re-render to reflect the new model
+      selectModel(cmd.agent, cmd.model);
       return;
     }
 
@@ -205,10 +213,8 @@ export function WelcomeScreen(props: {
           loadModels={loadModels}
           width={inputBarWidth(stdout?.columns ?? 80)}
           onSelect={(model, effort) => {
-            agents[modelPickerAgent].setModel(model, effort);
-            setNotice(null);
+            selectModel(modelPickerAgent, model, effort);
             setModelPickerAgent(null);
-            bump((v) => v + 1);
           }}
           onCancel={() => setModelPickerAgent(null)}
         />

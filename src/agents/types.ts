@@ -1,3 +1,4 @@
+import type { EffortLevel } from "@anthropic-ai/claude-agent-sdk";
 import type { AgentResult } from "../orchestrator/types.js";
 import type {
   AgentActivity,
@@ -8,6 +9,15 @@ import type {
 } from "../types.js";
 
 export const AUTO_MODEL_LABEL = "auto (detected on first turn)";
+
+export interface ModelSelection {
+  model: string;
+  effort?: string;
+}
+
+export function isClaudeEffort(value: string): value is EffortLevel {
+  return value === "low" || value === "medium" || value === "high" || value === "xhigh" || value === "max";
+}
 
 export interface ModelEffort {
   id: string;

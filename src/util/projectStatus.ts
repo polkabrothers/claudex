@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { AutonomyBudget } from "../types.js";
+import { isClaudeEffort, type ModelSelection } from "../agents/types.js";
+import type { AgentId, AutonomyBudget } from "../types.js";
 
 export interface ProjectStatus {
   decisionsCount: number;
@@ -20,6 +21,7 @@ export interface ProjectStatus {
   codexDefaultModel: string | null;
   codexDefaultEffort: string | null;
   autonomyBudget: AutonomyBudget | null;
+  modelSelections: Partial<Record<AgentId, ModelSelection>>;
 }
 
 /** Format the model ID or alias as given, leaving the version unknown for aliases. */
@@ -78,6 +80,7 @@ function readCodexDefault(): { model: string | null; effort: string | null } {
 
 function readClaudexState(cwd: string): {
   autonomyBudget?: unknown;
+  modelSelections?: unknown;
 } {
   const p = path.join(cwd, ".claudex/memory/.state.json");
   if (!existsSync(p)) return {};
@@ -87,6 +90,7 @@ function readClaudexState(cwd: string): {
     const state = parsed as Record<string, unknown>;
     return {
       autonomyBudget: state.autonomyBudget,
+      modelSelections: state.modelSelections,
     };
   } catch {
     return {};
@@ -126,7 +130,24 @@ export function getProjectStatus(cwd: string): ProjectStatus {
     codexDefaultModel: codexDefault.model,
     codexDefaultEffort: codexDefault.effort,
     autonomyBudget: validAutonomyBudget(state.autonomyBudget) ? state.autonomyBudget : null,
+    modelSelections: readModelSelections(state.modelSelections),
   };
+}
+
+function readModelSelections(value: unknown): ProjectStatus["modelSelections"] {
+  const selections: ProjectStatus["modelSelections"] = {};
+  if (!value || typeof value !== "object") return selections;
+  const saved = value as Record<string, unknown>;
+  for (const agent of ["claude", "codex"] as const) {
+    const entry = saved[agent];
+    if (!entry || typeof entry !== "object") continue;
+    const { model, effort } = entry as Record<string, unknown>;
+    if (typeof model !== "string" || !model.trim()) continue;
+    const validEffort = typeof effort === "string" && effort.trim() &&
+      (agent !== "claude" || isClaudeEffort(effort));
+    selections[agent] = { model, effort: validEffort ? effort : undefined };
+  }
+  return selections;
 }
 
 function validAutonomyBudget(value: unknown): value is AutonomyBudget {

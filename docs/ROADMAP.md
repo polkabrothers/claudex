@@ -25,6 +25,7 @@ Last updated: 2026-11-08
 
 - [x] Load model catalogs from the Claude SDK and Codex app server.
 - [x] Apply the selected effort on the next turn and show it in the footer.
+- [x] Restore each project's last model and effort choices when Claudex starts.
 
 ## In-Progress Focus (Current)
 

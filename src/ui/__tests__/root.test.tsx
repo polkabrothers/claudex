@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => {
     claudeDefaultModel: null as string | null,
     codexDefaultModel: null as string | null,
     codexDefaultEffort: null as string | null,
+    modelSelections: {} as { claude?: { model: string; effort?: string } },
     // These fakes always answer <<CONTINUE>> from a microtask, so a real debate
     // between them never ends and would starve the event loop. Nothing here
     // asserts on how many turns happen, so one automatic start is enough to
@@ -67,6 +68,7 @@ const mocks = vi.hoisted(() => {
   return {
     FakeAgent,
     appendDevlog: vi.fn(async () => {}),
+    rememberModelSelection: vi.fn(async () => {}),
     animatedHeader: vi.fn((props: { animation: string }) => {
       void props;
       return null;
@@ -105,6 +107,7 @@ vi.mock("../../memory/store.js", () => ({
   appendLimit: vi.fn(async () => {}),
   readDecisions: vi.fn(async () => "# Decisions\n\nNo confirmed decisions."),
   rememberAutonomyBudget: vi.fn(async () => {}),
+  rememberModelSelection: mocks.rememberModelSelection,
   saveHandoff: vi.fn(async () => "handoff.md"),
   saveTranscript: mocks.saveTranscript,
   sessionTitle: (topic: string) => topic,
@@ -299,6 +302,7 @@ describe("Root — cycle de vie du header", () => {
     await press(terminal, "\u001b[B");
     await press(terminal, "\t");
     expect(setModel).toHaveBeenCalledWith("sonnet", "medium");
+    expect(mocks.rememberModelSelection).toHaveBeenCalledWith("/projet-test", "claude", "sonnet", "medium");
     app.unmount();
     setModel.mockRestore();
   });

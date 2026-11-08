@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import type { AgentResult } from "../orchestrator/types.js";
 import type { AgentActivity } from "../types.js";
 import { formatClaudeModel } from "../util/projectStatus.js";
-import { AUTO_MODEL_LABEL, type AgentSendOptions, type AvailableModel, type CodingAgent } from "./types.js";
+import { AUTO_MODEL_LABEL, isClaudeEffort, type AgentSendOptions, type AvailableModel, type CodingAgent } from "./types.js";
 
 /**
  * Strictly read-only tools for debate phase.
@@ -525,10 +525,6 @@ function describeClaudeThrownError(error: unknown): string {
     return `Claude Code limit reached — use /resume after it resets (${message}).`;
   }
   return message;
-}
-
-function isClaudeEffort(value: string): value is EffortLevel {
-  return value === "low" || value === "medium" || value === "high" || value === "xhigh" || value === "max";
 }
 
 function looksLikeUsageLimit(message: string): boolean {

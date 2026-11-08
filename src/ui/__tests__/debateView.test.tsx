@@ -150,11 +150,13 @@ function mount(options: { fromFullScreen?: boolean; topic?: string } = {}) {
         claudeDefaultModel: null,
         codexDefaultModel: null,
         codexDefaultEffort: null,
+        modelSelections: {},
       }}
       coordinatorState={{ kind: "idle" }}
       coordinatorNotice={null}
       onLifecycleRequest={async () => ({ ok: true, message: "ok" })}
       onAutonomySelected={async () => {}}
+      onModelSelected={async () => {}}
     />
   );
 
