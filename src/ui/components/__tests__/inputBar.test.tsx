@@ -121,8 +121,8 @@ describe("InputBar — navigation contextuelle", () => {
     await press(terminal, "/mo");
 
     const output = terminal.output.join("").replace(ANSI_SEQUENCE, "");
-    expect(output).toContain("/model claude <name>");
-    expect(output).toContain("/model codex <name>");
+    expect(output).toContain("/model claude");
+    expect(output).toContain("/model codex");
     expect(output).not.toContain("/help —");
     expect(onPaletteChange).toHaveBeenLastCalledWith(true);
     terminal.app.unmount();

@@ -6,7 +6,7 @@
  * - Delegates all scheduling logic to the Scheduler
  */
 
-import type { CodingAgent } from "../agents/types.js";
+import type { AvailableModel, CodingAgent } from "../agents/types.js";
 import type {
   AgentId,
   AutonomyBudget,
@@ -176,8 +176,12 @@ export class DebateSession extends TypedEmitter<SessionEvents> {
   /**
    * Set the model for an agent.
    */
-  setModel(agent: AgentId, model: string): void {
-    this.scheduler.setModel(agent, model);
+  setModel(agent: AgentId, model: string, effort?: string): void {
+    this.scheduler.setModel(agent, model, effort);
+  }
+
+  listModels(agent: AgentId, signal: AbortSignal): Promise<AvailableModel[]> {
+    return this.scheduler.listModels(agent, signal);
   }
 
   /**

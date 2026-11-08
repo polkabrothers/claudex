@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import * as readline from "node:readline";
 import type { AgentResult } from "../orchestrator/types.js";
 import type { AgentActivity } from "../types.js";
-import { AUTO_MODEL_LABEL, type AgentSendOptions, type CodingAgent } from "./types.js";
+import { AUTO_MODEL_LABEL, type AgentSendOptions, type AvailableModel, type CodingAgent } from "./types.js";
 
 type RpcId = number | string;
 
@@ -80,7 +80,9 @@ export class CodexAgent implements CodingAgent {
   readonly label = "Codex";
 
   private model: string | undefined;
+  private effort: string | undefined;
   private resolvedModel: string | undefined;
+  private resolvedEffort: string | undefined;
   private readonly initialDisplayModel: string | undefined;
   private threadId: string | undefined;
   private activeConnection: CodexAppServerConnection | null = null;
@@ -93,22 +95,69 @@ export class CodexAgent implements CodingAgent {
   }
 
   currentModel(): string {
-    return this.resolvedModel ?? this.model ?? this.initialDisplayModel ?? AUTO_MODEL_LABEL;
+    const model = this.resolvedModel ?? this.model ?? this.initialDisplayModel ?? AUTO_MODEL_LABEL;
+    const effort = this.effort ?? this.resolvedEffort;
+    return effort ? `${model}, effort ${effort}` : model;
   }
 
   hasExplicitModel(): boolean {
     return this.model !== undefined;
   }
 
-  setModel(model: string): void {
+  setModel(model: string, effort?: string): void {
     this.model = model;
+    this.effort = effort;
     this.resolvedModel = undefined;
+    this.resolvedEffort = undefined;
+  }
+
+  async listModels(cwd: string, signal: AbortSignal): Promise<AvailableModel[]> {
+    signal.throwIfAborted();
+    const connection = new CodexAppServerConnection(cwd, () => {});
+    const abort = () => { void connection.close().catch(() => undefined); };
+    signal.addEventListener("abort", abort, { once: true });
+    try {
+      await connection.initialize();
+      const models: AvailableModel[] = [];
+      let cursor: string | undefined;
+      do {
+        signal.throwIfAborted();
+        const page = asRecord(await connection.request("model/list", { cursor }));
+        if (!Array.isArray(page.data)) throw new Error("Invalid Codex model catalog.");
+        for (const value of page.data as unknown[]) {
+          const model = asRecord(value);
+          const id = stringOf(model.model);
+          if (!id || model.hidden === true) continue;
+          const levels: unknown[] = Array.isArray(model.supportedReasoningEfforts)
+            ? model.supportedReasoningEfforts
+            : [];
+          const efforts = levels.flatMap((value) => {
+            const level = asRecord(value);
+            const id = stringOf(level.reasoningEffort);
+            return id ? [{ id, description: optionalString(level.description) }] : [];
+          });
+          models.push({
+            id,
+            label: stringOf(model.displayName) || id,
+            description: optionalString(model.description),
+            defaultEffort: optionalString(model.defaultReasoningEffort),
+            efforts,
+          });
+        }
+        cursor = optionalString(page.nextCursor);
+      } while (cursor);
+      return models;
+    } finally {
+      signal.removeEventListener("abort", abort);
+      await connection.close();
+    }
   }
 
   resetSession(): void {
     if (this.activeSend) throw new Error("Cannot reset Codex during an active turn.");
     this.threadId = undefined;
     this.resolvedModel = undefined;
+    this.resolvedEffort = undefined;
   }
 
   send(message: string, options: AgentSendOptions): Promise<AgentResult> {
@@ -125,6 +174,7 @@ export class CodexAgent implements CodingAgent {
 
   private async performSend(message: string, options: AgentSendOptions): Promise<AgentResult> {
     if (options.signal?.aborted) return { kind: "cancelled" };
+    const { model, effort } = this;
 
     this.cancelled = false;
     let text = "";
@@ -312,11 +362,7 @@ export class CodexAgent implements CodingAgent {
     options.signal?.addEventListener("abort", abortHandler, { once: true });
 
     try {
-      await connection.request("initialize", {
-        clientInfo: { name: "claudex", title: "Claudex", version: "0.1.0" },
-        capabilities: null,
-      });
-      connection.notify("initialized");
+      await connection.initialize();
 
       const sandbox = options.writeAccess ? "workspace-write" : "read-only";
       const threadParams: Record<string, unknown> = {
@@ -324,7 +370,7 @@ export class CodexAgent implements CodingAgent {
         approvalPolicy: "never",
         sandbox,
       };
-      if (this.model) threadParams.model = this.model;
+      if (model) threadParams.model = model;
 
       const threadResponse = asRecord(
         this.threadId
@@ -336,8 +382,10 @@ export class CodexAgent implements CodingAgent {
       if (!nextThreadId) throw new Error("Codex app-server did not return a thread ID.");
       this.threadId = nextThreadId;
       expectedThreadId = nextThreadId;
-      const resolvedModel = stringOf(threadResponse.model) || undefined;
-      if (resolvedModel) this.resolvedModel = resolvedModel;
+      if (model === this.model && effort === this.effort) {
+        this.resolvedModel = optionalString(threadResponse.model);
+        this.resolvedEffort = optionalString(threadResponse.reasoningEffort);
+      }
 
       const turnResponse = asRecord(await connection.request("turn/start", {
         threadId: nextThreadId,
@@ -345,7 +393,8 @@ export class CodexAgent implements CodingAgent {
         cwd: options.cwd,
         approvalPolicy: "never",
         sandboxPolicy: sandboxPolicy(options.writeAccess, options.cwd),
-        ...(this.model ? { model: this.model } : {}),
+        model,
+        effort,
       }));
       const startedTurn = startedTurnOf(turnResponse.turn);
       if (startedTurn instanceof Error) throw new CodexProtocolError(startedTurn.message);
@@ -437,6 +486,14 @@ class CodexAppServerConnection {
 
   get stderrSummary(): string {
     return this.stderr.trim();
+  }
+
+  async initialize(): Promise<void> {
+    await this.request("initialize", {
+      clientInfo: { name: "claudex", title: "Claudex", version: "0.1.0" },
+      capabilities: null,
+    });
+    this.notify("initialized");
   }
 
   request(method: string, params: unknown): Promise<unknown> {

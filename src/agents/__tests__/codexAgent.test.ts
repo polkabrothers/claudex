@@ -50,6 +50,18 @@ class FakeAppServer extends EventEmitter {
       this.write({ id, result: {} });
       return;
     }
+    if (method === "model/list") {
+      const cursor = (message.params as { cursor?: string }).cursor;
+      this.write({ id, result: cursor ? { data: [{ model: "second" }], nextCursor: null } : {
+        data: [
+          { model: "hidden", hidden: true },
+          { model: "codex-test", displayName: "Codex Test", defaultReasoningEffort: "high",
+            supportedReasoningEfforts: [{ reasoningEffort: "high", description: "More depth" }] },
+        ],
+        nextCursor: "page-2",
+      } });
+      return;
+    }
     if (method === "thread/start" || method === "thread/resume") {
       this.write({ id, result: { thread: { id: "thread-1" }, model: "codex-test" } });
       return;
@@ -163,6 +175,32 @@ class FakeAppServer extends EventEmitter {
 
 describe("CodexAgent app-server streaming", () => {
   beforeEach(() => spawnMock.mockReset());
+
+  it("loads the visible model catalog and effort levels without starting a thread", async () => {
+    const server = new FakeAppServer("success");
+    spawnMock.mockReturnValue(server);
+    const models = await new CodexAgent().listModels("/tmp", new AbortController().signal);
+    expect(models).toEqual([
+      { id: "codex-test", label: "Codex Test", defaultEffort: "high",
+        efforts: [{ id: "high", description: "More depth" }] },
+      { id: "second", label: "second", efforts: [] },
+    ]);
+    expect(server.requests.map(({ method }) => method)).toEqual([
+      "initialize", "initialized", "model/list", "model/list",
+    ]);
+    expect(server.signalCode).toBe("SIGTERM");
+  });
+
+  it("sends the selected reasoning effort with the selected model", async () => {
+    const server = new FakeAppServer("success");
+    spawnMock.mockReturnValue(server);
+    const agent = new CodexAgent();
+    agent.setModel("codex-test", "high");
+    await agent.send("Topic", { cwd: "/tmp", writeAccess: false });
+    expect(server.requests.find(({ method }) => method === "turn/start")?.params)
+      .toMatchObject({ model: "codex-test", effort: "high" });
+    expect(agent.currentModel()).toBe("codex-test, effort high");
+  });
 
   it("consumes deltas without duplicating the final message and exposes the command as activity", async () => {
     const server = new FakeAppServer("success");

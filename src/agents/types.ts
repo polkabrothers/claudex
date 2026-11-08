@@ -9,6 +9,19 @@ import type {
 
 export const AUTO_MODEL_LABEL = "auto (detected on first turn)";
 
+export interface ModelEffort {
+  id: string;
+  description?: string;
+}
+
+export interface AvailableModel {
+  id: string;
+  label: string;
+  description?: string;
+  efforts: readonly ModelEffort[];
+  defaultEffort?: string;
+}
+
 export interface AgentSendOptions {
   cwd: string;
   writeAccess: boolean;
@@ -32,7 +45,8 @@ export interface CodingAgent {
   readonly label: string;
   currentModel(): string;
   hasExplicitModel(): boolean;
-  setModel(model: string): void;
+  setModel(model: string, effort?: string): void;
+  listModels(cwd: string, signal: AbortSignal): Promise<AvailableModel[]>;
   /** Drops the resumed session/thread id so the next send() starts a fresh conversation. */
   resetSession(): void;
   /**

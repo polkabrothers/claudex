@@ -318,6 +318,7 @@ export function Root(props: { cwd: string; initialTopic?: string }) {
   if (!session) {
     return (
       <WelcomeScreen
+        cwd={cwd}
         agents={agents}
         status={status}
         headerAnimation={headerAnimation}

@@ -40,6 +40,12 @@ const mocks = vi.hoisted(() => {
       return true;
     }
     setModel() {}
+    listModels() {
+      return Promise.resolve([
+        { id: "opus", label: "Opus 5", efforts: [] },
+        { id: "sonnet", label: "Sonnet 5", efforts: [{ id: "medium" }] },
+      ]);
+    }
     resetSession() {}
     send() {
       return new Promise<{ kind: "cancelled" } | { kind: "success"; text: string }>((resolve) => {
@@ -286,11 +292,13 @@ describe("Root — cycle de vie du header", () => {
     expect(frameChunk).toBeDefined();
     const frame = frameChunk!.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
     expect(frame.indexOf("Opus 5")).toBeLessThan(frame.indexOf("Describe the technical question"));
-    expect(frame).toContain("↑↓ 1/4 · Tab or Enter select · Esc close");
+    expect(frame).toContain("↑↓ 1/2 · Tab or Enter select · Esc close");
 
     await press(terminal, "\u001b[B");
     await press(terminal, "\t");
-    expect(setModel).toHaveBeenCalledWith("sonnet");
+    await press(terminal, "\u001b[B");
+    await press(terminal, "\t");
+    expect(setModel).toHaveBeenCalledWith("sonnet", "medium");
     app.unmount();
     setModel.mockRestore();
   });

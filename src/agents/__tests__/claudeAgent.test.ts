@@ -23,6 +23,35 @@ function successResult() {
 describe("ClaudeAgent streaming", () => {
   beforeEach(() => queryMock.mockReset());
 
+  it("lists models without sending a prompt or loading project hooks", async () => {
+    const close = vi.fn();
+    queryMock.mockReturnValue({
+      supportedModels: async () => [
+        { value: "opus", resolvedModel: "claude-opus-5-5", displayName: "Opus 5.5",
+          supportedEffortLevels: ["low", "high"] },
+      ],
+      close,
+    });
+
+    expect(await new ClaudeAgent().listModels("/project", new AbortController().signal))
+      .toEqual([{ id: "claude-opus-5-5", label: "Opus 5.5", efforts: [{ id: "low" }, { id: "high" }] }]);
+    expect(queryMock).toHaveBeenCalledWith(expect.objectContaining({
+      options: expect.objectContaining({ settingSources: [], strictMcpConfig: true, persistSession: false }),
+    }));
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("passes selected effort to the SDK on the next turn", async () => {
+    queryMock.mockReturnValue(messages([successResult()]));
+    const agent = new ClaudeAgent();
+    agent.setModel("opus", "high");
+    expect(agent.currentModel()).toContain("effort high");
+    await agent.send("Topic", { cwd: "/tmp", writeAccess: false });
+    expect(queryMock).toHaveBeenCalledWith(expect.objectContaining({
+      options: expect.objectContaining({ model: "opus", effort: "high" }),
+    }));
+  });
+
   it("emits actual text_delta events without repeating the final assistant message", async () => {
     queryMock.mockReturnValue(
       messages([

@@ -1,5 +1,5 @@
 import { Box, Text, useApp, useStdout } from "ink";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { CodingAgent } from "../../agents/types.js";
 import { parseCommand } from "../../orchestrator/commands.js";
 import type { AgentId } from "../../types.js";
@@ -61,7 +61,7 @@ export function welcomeMemoryLine(
 }
 
 const WELCOME_HELP_LINES = [
-  "Home: free text starts a debate · /model claude|codex <name>",
+  "Home: free text starts a debate · /model claude|codex opens model and effort",
   "During a debate: free text · /claude <text> · /codex <text>",
   "/pause · /resume · /cancel · /save · /new",
   "/autonomy unbounded|starts N|time 5m [--remember]",
@@ -72,13 +72,14 @@ const WELCOME_HELP_LINES = [
 ] as const;
 
 export function WelcomeScreen(props: {
+  cwd: string;
   agents: Record<AgentId, CodingAgent>;
   status: ProjectStatus;
   headerAnimation: HeaderAnimationId;
   onHeaderAnimationChange: (animation: HeaderAnimationId) => void;
   onStart: (topic: string) => void;
 }) {
-  const { agents, status, headerAnimation, onHeaderAnimationChange, onStart } = props;
+  const { cwd, agents, status, headerAnimation, onHeaderAnimationChange, onStart } = props;
   const { exit } = useApp();
   const { stdout } = useStdout();
   const rows = stdout?.rows || 24;
@@ -92,6 +93,10 @@ export function WelcomeScreen(props: {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [modelPickerAgent, setModelPickerAgent] = useState<AgentId | null>(null);
   const selectionPaletteOpen = commandPaletteOpen || modelPickerAgent !== null;
+  const loadModels = useCallback(
+    (agent: AgentId, signal: AbortSignal) => agents[agent].listModels(cwd, signal),
+    [agents, cwd],
+  );
 
   function handleSubmit(value: string, options?: { literal: true }) {
     if (options?.literal) {
@@ -197,9 +202,11 @@ export function WelcomeScreen(props: {
         <ModelPicker
           key={modelPickerAgent}
           agent={modelPickerAgent}
+          loadModels={loadModels}
           width={inputBarWidth(stdout?.columns ?? 80)}
-          onSelect={(model) => {
-            agents[modelPickerAgent].setModel(model);
+          onSelect={(model, effort) => {
+            agents[modelPickerAgent].setModel(model, effort);
+            setNotice(null);
             setModelPickerAgent(null);
             bump((v) => v + 1);
           }}

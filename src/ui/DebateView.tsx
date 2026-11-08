@@ -104,6 +104,10 @@ export function DebateView(props: {
   const [implementationSummary, setImplementationSummary] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [modelPickerAgent, setModelPickerAgent] = useState<AgentId | null>(null);
+  const loadModels = useCallback(
+    (agent: AgentId, signal: AbortSignal) => session.listModels(agent, signal),
+    [session],
+  );
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [inputRows, setInputRows] = useState(INPUT_BAR_MIN_ROWS);
   // Explicit paused state — never derived from !busy
@@ -579,9 +583,10 @@ export function DebateView(props: {
               <ModelPicker
                 key={modelPickerAgent}
                 agent={modelPickerAgent}
+                loadModels={loadModels}
                 width={inputBarWidth(columns)}
-                onSelect={(model) => {
-                  session.setModel(modelPickerAgent, model);
+                onSelect={(model, effort) => {
+                  session.setModel(modelPickerAgent, model, effort);
                   setContextUsage((current) => ({ ...current, [modelPickerAgent]: undefined }));
                   setModelPickerAgent(null);
                 }}
@@ -791,7 +796,7 @@ function helpLines(): string[] {
     `${pad}${key("/topic")} — show the complete topic in the transcript`,
     `${pad}${key("/decisions")} — show confirmed decisions from project memory`,
     `${pad}${key("/claude")} or ${key("/codex")} text — targeted message`,
-    `${pad}${key("/model claude|codex name")} — change the model during the session`,
+    `${pad}${key("/model claude|codex")} — choose a model and effort (or append a model ID)`,
     `${pad}${key("/handoff")} — after consensus, generate a standalone markdown file (project context +`,
     `${pad}  specification) to pass to a native claude/codex session — recommended path`,
     `${pad}${key("/implement")} — grant write access and enter implementation (stay in Claudex)`,

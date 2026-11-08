@@ -37,6 +37,10 @@ class DemoAgent implements CodingAgent {
     // Demo agents have fixed model labels.
   }
 
+  listModels() {
+    return Promise.resolve([]);
+  }
+
   resetSession(): void {
     this.turn = 0;
   }
@@ -176,6 +180,7 @@ function DemoApp() {
   if (!activeSession) {
     return (
       <WelcomeScreen
+        cwd={cwd}
         agents={agents}
         status={status}
         headerAnimation={headerAnimation}

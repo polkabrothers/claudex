@@ -1,8 +1,9 @@
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query, type EffortLevel } from "@anthropic-ai/claude-agent-sdk";
+import { tmpdir } from "node:os";
 import type { AgentResult } from "../orchestrator/types.js";
 import type { AgentActivity } from "../types.js";
 import { formatClaudeModel } from "../util/projectStatus.js";
-import { AUTO_MODEL_LABEL, type AgentSendOptions, type CodingAgent } from "./types.js";
+import { AUTO_MODEL_LABEL, type AgentSendOptions, type AvailableModel, type CodingAgent } from "./types.js";
 
 /**
  * Strictly read-only tools for debate phase.
@@ -21,6 +22,7 @@ export class ClaudeAgent implements CodingAgent {
   readonly label = "Claude Code";
 
   private model: string | undefined;
+  private effort: EffortLevel | undefined;
   private resolvedModel: string | undefined;
   private readonly initialDisplayModel: string | undefined;
   private sessionId: string | undefined;
@@ -34,18 +36,58 @@ export class ClaudeAgent implements CodingAgent {
 
   currentModel(): string {
     const model = this.resolvedModel ?? this.model;
-    return model
+    const label = model
       ? formatClaudeModel(model)
       : this.initialDisplayModel ?? AUTO_MODEL_LABEL;
+    return this.effort ? `${label}, effort ${this.effort}` : label;
   }
 
   hasExplicitModel(): boolean {
     return this.model !== undefined;
   }
 
-  setModel(model: string): void {
+  setModel(model: string, effort?: string): void {
+    if (effort !== undefined && !isClaudeEffort(effort)) {
+      throw new Error(`Unsupported Claude effort: ${effort}`);
+    }
     this.model = model;
+    this.effort = effort;
     this.resolvedModel = undefined;
+  }
+
+  async listModels(_cwd: string, signal: AbortSignal): Promise<AvailableModel[]> {
+    signal.throwIfAborted();
+    const abortController = new AbortController();
+    const abort = () => abortController.abort(signal.reason);
+    let finishInput!: () => void;
+    const keepInputOpen = new Promise<void>((resolve) => { finishInput = resolve; });
+    // Initialize the catalog in a neutral directory without submitting a turn
+    // or starting the target project's hooks and MCP servers.
+    const catalog = query({
+      prompt: (async function* () { await keepInputOpen; })(),
+      options: {
+        cwd: tmpdir(),
+        abortController,
+        settingSources: [],
+        strictMcpConfig: true,
+        settings: { disableAllHooks: true },
+        persistSession: false,
+        tools: [],
+      },
+    });
+    signal.addEventListener("abort", abort, { once: true });
+    try {
+      return (await catalog.supportedModels()).map((model) => ({
+        id: model.resolvedModel ?? model.value,
+        label: model.displayName,
+        description: model.description,
+        efforts: (model.supportedEffortLevels ?? []).map((id) => ({ id })),
+      }));
+    } finally {
+      signal.removeEventListener("abort", abort);
+      finishInput();
+      catalog.close();
+    }
   }
 
   resetSession(): void {
@@ -67,6 +109,7 @@ export class ClaudeAgent implements CodingAgent {
   }
 
   private async performSend(message: string, options: AgentSendOptions): Promise<AgentResult> {
+    const { model, effort } = this;
     this.abortController = new AbortController();
     const abortController = this.abortController;
     const externalAbort = () => abortController.abort();
@@ -125,7 +168,8 @@ export class ClaudeAgent implements CodingAgent {
       const stream = query({
         prompt: message,
         options: {
-          model: this.model,
+          model,
+          effort,
           cwd: options.cwd,
           resume: this.sessionId,
           // Measured on this machine: loading user settings costs 13 300 tokens
@@ -244,7 +288,9 @@ export class ClaudeAgent implements CodingAgent {
           // 0.3.310) and lists it first, so only the assistant messages name
           // the model that answered.
           const usedModel = latestAssistantContext?.model;
-          if (usedModel) this.resolvedModel = usedModel;
+          if (usedModel && model === this.model && effort === this.effort) {
+            this.resolvedModel = usedModel;
+          }
 
           const contextWindow = modelContextWindowOf(modelUsage, latestAssistantContext?.model);
           if (latestAssistantContext && contextWindow !== null) {
@@ -479,6 +525,10 @@ function describeClaudeThrownError(error: unknown): string {
     return `Claude Code limit reached — use /resume after it resets (${message}).`;
   }
   return message;
+}
+
+function isClaudeEffort(value: string): value is EffortLevel {
+  return value === "low" || value === "medium" || value === "high" || value === "xhigh" || value === "max";
 }
 
 function looksLikeUsageLimit(message: string): boolean {
