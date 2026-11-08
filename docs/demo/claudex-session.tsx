@@ -37,6 +37,10 @@ class DemoAgent implements CodingAgent {
     // Demo agents have fixed model labels.
   }
 
+  listModels() {
+    return Promise.resolve([]);
+  }
+
   resetSession(): void {
     this.turn = 0;
   }
@@ -162,6 +166,7 @@ const status: ProjectStatus = {
   claudeDefaultModel: "Opus 5",
   codexDefaultModel: "gpt-5.6-sol",
   codexDefaultEffort: "medium",
+  modelSelections: {},
 };
 
 function DemoApp() {
@@ -176,11 +181,13 @@ function DemoApp() {
   if (!activeSession) {
     return (
       <WelcomeScreen
+        cwd={cwd}
         agents={agents}
         status={status}
         headerAnimation={headerAnimation}
         onHeaderAnimationChange={setHeaderAnimation}
         onStart={start}
+        onModelSelected={() => Promise.resolve()}
       />
     );
   }
@@ -196,6 +203,7 @@ function DemoApp() {
       coordinatorNotice={null}
       onLifecycleRequest={() => Promise.resolve({ ok: true, message: "Démo terminée." })}
       onAutonomySelected={() => Promise.resolve()}
+      onModelSelected={() => Promise.resolve()}
     />
   );
 }

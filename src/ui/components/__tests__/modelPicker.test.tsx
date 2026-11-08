@@ -2,9 +2,25 @@ import { EventEmitter } from "node:events";
 import { render } from "ink";
 import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
+import type { AvailableModel } from "../../../agents/types.js";
 import { MODEL_PICKER_ROWS, ModelPicker } from "../ModelPicker.js";
 
 const ANSI_SEQUENCE = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+
+const catalogs: Record<"claude" | "codex", AvailableModel[]> = {
+  claude: [
+    { id: "opus", label: "Opus 5", description: "most capable, slower", efforts: [] },
+    { id: "sonnet", label: "Sonnet 5", description: "balanced (recommended)", efforts: [] },
+    { id: "haiku", label: "Haiku 4.5", description: "fast and lightweight", efforts: [] },
+    { id: "fable", label: "Fable 5", efforts: [] },
+  ],
+  codex: [
+    { id: "codex-first", label: "Codex First", efforts: [] },
+    { id: "codex-deep", label: "Codex Deep", defaultEffort: "medium",
+      efforts: [{ id: "low" }, { id: "medium" }, { id: "high" }] },
+  ],
+};
+const loadModels = (agent: "claude" | "codex") => Promise.resolve(catalogs[agent]);
 
 function mount(agent: "claude" | "codex") {
   const inputQueue: string[] = [];
@@ -34,6 +50,7 @@ function mount(agent: "claude" | "codex") {
   const app = render(
     <ModelPicker
       agent={agent}
+      loadModels={loadModels}
       width={60}
       onSelect={onSelect}
       onCancel={onCancel}
@@ -48,6 +65,7 @@ function mount(agent: "claude" | "codex") {
     },
   );
   return {
+    agent,
     app,
     inputQueue,
     output,
@@ -63,7 +81,7 @@ function mount(agent: "claude" | "codex") {
 
 async function ready(terminal: ReturnType<typeof mount>): Promise<void> {
   await vi.waitFor(() => expect(terminal.stdin.listenerCount("readable")).toBeGreaterThan(0));
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await vi.waitFor(() => expect(terminal.output.join("")).toContain(catalogs[terminal.agent][0]!.label));
 }
 
 async function press(terminal: ReturnType<typeof mount>, input: string): Promise<void> {
@@ -78,7 +96,8 @@ describe("ModelPicker", () => {
     const terminal = mount("claude");
     await ready(terminal);
 
-    const frame = terminal.output.join("").replace(ANSI_SEQUENCE, "").replace(/\n$/, "");
+    const frame = terminal.output.findLast((chunk) => chunk.includes("Opus 5"))!
+      .replace(ANSI_SEQUENCE, "").replace(/\n$/, "");
     const lines = frame.split("\n");
     expect(lines).toHaveLength(MODEL_PICKER_ROWS);
     expect(frame).toContain("› Opus 5");
@@ -109,16 +128,20 @@ describe("ModelPicker", () => {
     terminal.app.unmount();
   });
 
-  it("présente Codex dans la même palette et sélectionne avec Tab", async () => {
+  it("selects a model and a supported effort in the same palette", async () => {
     const terminal = mount("codex");
     await ready(terminal);
 
     const frame = terminal.output.join("").replace(ANSI_SEQUENCE, "");
-    expect(frame).toContain("› gpt-5.6-sol, effort max — configured default");
+    expect(frame).toContain("› Codex First");
     expect(frame).toContain("↑↓ 1/2 · Tab or Enter select · Esc close");
     await press(terminal, "\u001b[B");
     await press(terminal, "\t");
-    expect(terminal.onSelect).toHaveBeenCalledWith("gpt-5.5");
+    expect(terminal.output.join("").replace(ANSI_SEQUENCE, "")).toContain("Default (medium)");
+    expect(terminal.onSelect).not.toHaveBeenCalled();
+    await press(terminal, "\u001b[A");
+    await press(terminal, "\t");
+    expect(terminal.onSelect).toHaveBeenCalledWith("codex-deep", "high");
     terminal.app.unmount();
   });
 
@@ -138,6 +161,10 @@ describe("ModelPicker", () => {
     const terminal = mount("codex");
     await ready(terminal);
 
+    await press(terminal, "\u001b[B");
+    await press(terminal, "\t");
+    await press(terminal, "\u001b");
+    expect(terminal.onCancel).not.toHaveBeenCalled();
     await press(terminal, "\u001b");
     expect(terminal.onCancel).toHaveBeenCalledOnce();
     expect(terminal.onSelect).not.toHaveBeenCalled();

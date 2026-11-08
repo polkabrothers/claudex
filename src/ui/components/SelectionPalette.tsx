@@ -23,6 +23,7 @@ export function SelectionPalette(props: {
   width: number;
   actionLabel: string;
   emptyLabel: string;
+  escapeLabel?: string;
 }) {
   const { items, width } = props;
   const selectedIndex =
@@ -79,7 +80,7 @@ export function SelectionPalette(props: {
       })}
       <Text> </Text>
       <Text color={MUTED_COLOR} wrap="truncate-end">
-        ↑↓ {position} · {props.actionLabel} · Esc close
+        ↑↓ {position} · {props.actionLabel} · {props.escapeLabel ?? "Esc close"}
       </Text>
     </Box>
   );

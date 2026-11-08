@@ -45,6 +45,10 @@ class FakeAgent implements CodingAgent {
     this.model = model;
   }
 
+  listModels() {
+    return Promise.resolve([]);
+  }
+
   resetSession(): void {
     // No-op
   }

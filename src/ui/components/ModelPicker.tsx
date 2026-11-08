@@ -1,90 +1,101 @@
 import { useInput } from "ink";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { AvailableModel } from "../../agents/types.js";
 import type { AgentId } from "../../types.js";
-import {
-  SELECTION_PALETTE_ROWS,
-  SelectionPalette,
-  type SelectionPaletteItem,
-} from "./SelectionPalette.js";
+import { SELECTION_PALETTE_ROWS, SelectionPalette } from "./SelectionPalette.js";
 
-/**
- * Only models with real evidence behind them: Claude's aliases are
- * documented in `claude --help` (fable/opus/sonnet, haiku by the same
- * pattern). Codex's are read from this account's own ~/.codex/config.toml
- * (configured default + availability history) — nothing invented, since a
- * wrong guess here would just fail at the API.
- */
-interface ModelOption extends SelectionPaletteItem {
-  value: string;
-}
-
-const OPTIONS: Record<AgentId, ModelOption[]> = {
-  claude: [
-    { key: "opus", label: "Opus 5", description: "most capable, slower", value: "opus" },
-    {
-      key: "sonnet",
-      label: "Sonnet 5",
-      description: "balanced (recommended)",
-      value: "sonnet",
-    },
-    { key: "haiku", label: "Haiku 4.5", description: "fast and lightweight", value: "haiku" },
-    { key: "fable", label: "Fable 5", value: "fable" },
-  ],
-  codex: [
-    {
-      key: "gpt-5.6-sol",
-      label: "gpt-5.6-sol, effort max",
-      description: "configured default",
-      value: "gpt-5.6-sol",
-    },
-    { key: "gpt-5.5", label: "gpt-5.5", value: "gpt-5.5" },
-  ],
-};
-
-/** Same fixed viewport as commands: three choices, one gap, then the controls. */
 export const MODEL_PICKER_ROWS = SELECTION_PALETTE_ROWS;
+const CATALOG_TIMEOUT_MS = 8_000;
 
-/**
- * Opens in the same fixed slot as command completion, immediately above the
- * prompt. The parent keeps the prompt visible but routes keyboard input here.
- */
+/** The two selection steps share the command palette's fixed viewport. */
 export function ModelPicker(props: {
   agent: AgentId;
-  onSelect: (model: string) => void;
+  loadModels: (agent: AgentId, signal: AbortSignal) => Promise<AvailableModel[]>;
+  onSelect: (model: string, effort?: string) => void;
   onCancel: () => void;
   width: number;
 }) {
-  const { agent, onSelect, onCancel, width } = props;
-  const options = OPTIONS[agent];
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const safeSelectedIndex = Math.min(selectedIndex, options.length - 1);
+  const { agent, loadModels, onSelect, onCancel, width } = props;
+  const [models, setModels] = useState<AvailableModel[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [modelIndex, setModelIndex] = useState(0);
+  const [effortIndex, setEffortIndex] = useState<number | null>(null);
+  const selectedModel = models?.[modelIndex];
+  const choosingEffort = effortIndex !== null && selectedModel !== undefined;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      setLoadError(true);
+      controller.abort();
+    }, CATALOG_TIMEOUT_MS);
+    void loadModels(agent, controller.signal).then(
+      (result) => {
+        if (!controller.signal.aborted) setModels(result);
+      },
+      () => {
+        if (!controller.signal.aborted) setLoadError(true);
+      },
+    ).finally(() => clearTimeout(timer));
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [agent, loadModels]);
+
+  const efforts = choosingEffort ? [
+    {
+      key: "provider-default",
+      label: selectedModel.defaultEffort ? `Default (${selectedModel.defaultEffort})` : "Default",
+      description: selectedModel.label,
+      value: selectedModel.defaultEffort,
+    },
+    ...selectedModel.efforts.map(({ id, description }) => ({
+      key: id,
+      label: id,
+      description,
+      value: id,
+    })),
+  ] : [];
+  const items = choosingEffort ? efforts : (models ?? []).map((model) => ({
+    key: `${model.id}:${model.label}`,
+    label: model.label,
+    description: model.description,
+  }));
+  const selectedIndex = choosingEffort ? effortIndex : modelIndex;
 
   useInput((_input, key) => {
     if (key.escape) {
-      onCancel();
+      if (choosingEffort) setEffortIndex(null);
+      else onCancel();
       return;
     }
+    if (!items.length) return;
     if (key.upArrow || key.downArrow) {
       const delta = key.upArrow ? -1 : 1;
-      setSelectedIndex((current) => (current + delta + options.length) % options.length);
+      const nextIndex = (selectedIndex + delta + items.length) % items.length;
+      if (choosingEffort) setEffortIndex(nextIndex);
+      else setModelIndex(nextIndex);
       return;
     }
-    // Entrée autant que Tab : la barre de saisie est inactive tant que le
-    // sélecteur est ouvert, donc Entrée ne servirait à rien d'autre, et c'est
-    // le réflexe universel après avoir surligné un choix aux flèches.
-    if (key.tab || key.return) {
-      const option = options[safeSelectedIndex];
-      if (option) onSelect(option.value);
-    }
+    if ((!key.tab && !key.return) || !selectedModel) return;
+    if (choosingEffort) onSelect(selectedModel.id, efforts[effortIndex]?.value);
+    else if (selectedModel.efforts.length) setEffortIndex(0);
+    else onSelect(selectedModel.id);
   });
+
+  const emptyLabel = loadError
+    ? `Could not load models. Retry or use /model ${agent} <id>.`
+    : models === null ? "Loading models…" : "No models available";
 
   return (
     <SelectionPalette
-      items={options}
-      selectedIndex={safeSelectedIndex}
+      items={items}
+      selectedIndex={selectedIndex}
       width={width}
-      actionLabel="Tab or Enter select"
-      emptyLabel="No models available"
+      actionLabel={choosingEffort ? "Tab or Enter set effort" : "Tab or Enter select"}
+      escapeLabel={choosingEffort ? "Esc back" : undefined}
+      emptyLabel={emptyLabel}
     />
   );
 }

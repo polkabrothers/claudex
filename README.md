@@ -174,8 +174,23 @@ Talking to the agents:
 | plain text | Message sent to both agents. On the welcome screen, starts the debate on that topic. |
 | `/claude <text>` | Message addressed to Claude only |
 | `/codex <text>` | Message addressed to Codex only |
-| `/model claude\|codex <name>` | Changes an agent's model, including before the debate starts |
+| `/model claude\|codex` | Opens the model and reasoning effort picker |
+| `/model claude\|codex <id>` | Sets a model ID or alias directly |
 | `/topic` | Prints the complete accepted topic in the transcript |
+
+Run `/model claude` or `/model codex` before or during a debate. Use the arrow
+keys to highlight a model, then press Enter or Tab. If the model advertises
+reasoning effort levels, choose one and press Enter or Tab again. Choose
+**Default** to use the provider's default for that model. Esc goes back from
+the effort list or closes the model list. Selections apply on the agent's next
+turn. Claudex remembers the last model and effort you selected for each agent
+when you relaunch it in the same project. A direct model ID selection also
+replaces the previously saved effort.
+
+Claudex loads the catalog from the bundled Claude Agent SDK or the local Codex
+client. Claude discovery runs outside the current project, so project or
+account restrictions may still affect which models a debate can use. For
+direct commands, pass a provider ID or alias such as `/model claude opus`.
 
 Recording:
 
@@ -213,6 +228,8 @@ Finishing:
 `Ctrl+C` follows the same path as `/quit` and never silently discards an archive. The built-in `/help` lists every command, including those reserved for last-resort situations.
 
 ## Architecture
+
+See the [development checklist](docs/ROADMAP.md) for feature status.
 
 ```
 src/

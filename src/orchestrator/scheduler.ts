@@ -10,7 +10,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { CodingAgent } from "../agents/types.js";
+import type { AvailableModel, CodingAgent } from "../agents/types.js";
 import { formatToolInput } from "../util/formatToolInput.js";
 import type {
   AgentActivity,
@@ -382,10 +382,15 @@ export class Scheduler {
   /**
    * Set the model for an agent.
    */
-  setModel(agent: AgentId, model: string): void {
+  setModel(agent: AgentId, model: string, effort?: string): void {
     this.assertOpen("change the model");
-    this.agents[agent].setModel(model);
-    this.addEntry({ from: "system", kind: "system", text: `${agent} → model: ${model}` });
+    this.agents[agent].setModel(model, effort);
+    const label = effort ? `${model}, effort ${effort}` : model;
+    this.addEntry({ from: "system", kind: "system", text: `${agent} → model: ${label}` });
+  }
+
+  listModels(agent: AgentId, signal: AbortSignal): Promise<AvailableModel[]> {
+    return this.agents[agent].listModels(this.options.cwd, signal);
   }
 
   /**

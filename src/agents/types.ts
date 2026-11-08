@@ -1,3 +1,4 @@
+import type { EffortLevel } from "@anthropic-ai/claude-agent-sdk";
 import type { AgentResult } from "../orchestrator/types.js";
 import type {
   AgentActivity,
@@ -8,6 +9,28 @@ import type {
 } from "../types.js";
 
 export const AUTO_MODEL_LABEL = "auto (detected on first turn)";
+
+export interface ModelSelection {
+  model: string;
+  effort?: string;
+}
+
+export function isClaudeEffort(value: string): value is EffortLevel {
+  return value === "low" || value === "medium" || value === "high" || value === "xhigh" || value === "max";
+}
+
+export interface ModelEffort {
+  id: string;
+  description?: string;
+}
+
+export interface AvailableModel {
+  id: string;
+  label: string;
+  description?: string;
+  efforts: readonly ModelEffort[];
+  defaultEffort?: string;
+}
 
 export interface AgentSendOptions {
   cwd: string;
@@ -32,7 +55,8 @@ export interface CodingAgent {
   readonly label: string;
   currentModel(): string;
   hasExplicitModel(): boolean;
-  setModel(model: string): void;
+  setModel(model: string, effort?: string): void;
+  listModels(cwd: string, signal: AbortSignal): Promise<AvailableModel[]>;
   /** Drops the resumed session/thread id so the next send() starts a fresh conversation. */
   resetSession(): void;
   /**

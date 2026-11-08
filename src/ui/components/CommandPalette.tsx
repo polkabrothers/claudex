@@ -16,13 +16,13 @@ export const COMMAND_PALETTE_ROWS = SELECTION_PALETTE_ROWS;
 export const WELCOME_COMMANDS: readonly CommandSuggestion[] = [
   {
     completion: "/model claude ",
-    usage: "/model claude <name>",
-    description: "choose the Claude model",
+    usage: "/model claude",
+    description: "choose a Claude model and effort",
   },
   {
     completion: "/model codex ",
-    usage: "/model codex <name>",
-    description: "choose the Codex model",
+    usage: "/model codex",
+    description: "choose a Codex model and effort",
   },
   { completion: "/decisions", usage: "/decisions", description: "view confirmed decisions" },
   { completion: "/help", usage: "/help", description: "show all commands" },
@@ -53,13 +53,13 @@ export const DEBATE_COMMANDS: readonly CommandSuggestion[] = [
   },
   {
     completion: "/model claude ",
-    usage: "/model claude <name>",
-    description: "change the Claude model",
+    usage: "/model claude",
+    description: "choose a Claude model and effort",
   },
   {
     completion: "/model codex ",
-    usage: "/model codex <name>",
-    description: "change the Codex model",
+    usage: "/model codex",
+    description: "choose a Codex model and effort",
   },
   {
     completion: "/handoff",

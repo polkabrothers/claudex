@@ -42,6 +42,12 @@ class FakeAgent implements CodingAgent {
     return true;
   }
   setModel() {}
+  listModels() {
+    return Promise.resolve([
+      { id: "codex-test", label: "Codex Test", efforts: [] },
+      { id: "codex-deep", label: "Codex Deep", efforts: [{ id: "high" }] },
+    ]);
+  }
   resetSession() {}
   async stop() {
     this.resolve?.({ kind: "cancelled" });
@@ -144,11 +150,13 @@ function mount(options: { fromFullScreen?: boolean; topic?: string } = {}) {
         claudeDefaultModel: null,
         codexDefaultModel: null,
         codexDefaultEffort: null,
+        modelSelections: {},
       }}
       coordinatorState={{ kind: "idle" }}
       coordinatorNotice={null}
       onLifecycleRequest={async () => ({ ok: true, message: "ok" })}
       onAutonomySelected={async () => {}}
+      onModelSelected={async () => {}}
     />
   );
 
@@ -211,20 +219,22 @@ describe("DebateView — viewport plein écran", () => {
 
     await press(t, "/model codex");
     await press(t, "\r");
-    await vi.waitFor(() => expect(t.chunks.join("")).toContain("gpt-5.6-sol"));
+    await vi.waitFor(() => expect(t.chunks.join("")).toContain("Codex Test"));
 
     const frameChunk = [...t.chunks]
       .reverse()
-      .find((chunk) => chunk.includes("gpt-5.6-sol") && chunk.includes("‣"));
+      .find((chunk) => chunk.includes("Codex Test") && chunk.includes("‣"));
     expect(frameChunk).toBeDefined();
     const frame = frameChunk!.replace(ANSI_SEQUENCE, "");
-    expect(frame.indexOf("gpt-5.6-sol")).toBeLessThan(frame.indexOf("‣"));
+    expect(frame.indexOf("Codex Test")).toBeLessThan(frame.indexOf("‣"));
     expect(frame).toContain("↑↓ 1/2 · Tab or Enter select · Esc close");
     expect(frame).not.toContain("fake-model + fake-model");
 
     await press(t, "\u001b[B");
     await press(t, "\t");
-    expect(setModel).toHaveBeenCalledWith("codex", "gpt-5.5");
+    await press(t, "\u001b[B");
+    await press(t, "\t");
+    expect(setModel).toHaveBeenCalledWith("codex", "codex-deep", "high");
 
     await press(t, "/model claude");
     await press(t, "\r");

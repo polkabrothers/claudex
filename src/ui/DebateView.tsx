@@ -72,6 +72,7 @@ export function DebateView(props: {
   coordinatorNotice: string | null;
   onLifecycleRequest: (request: LifecycleRequest) => Promise<CoordinatorResponse>;
   onAutonomySelected: (budget: AutonomyBudget, remember: boolean) => Promise<void>;
+  onModelSelected: (agent: AgentId, model: string, effort?: string) => Promise<void>;
 }) {
   const {
     session,
@@ -104,6 +105,10 @@ export function DebateView(props: {
   const [implementationSummary, setImplementationSummary] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [modelPickerAgent, setModelPickerAgent] = useState<AgentId | null>(null);
+  const loadModels = useCallback(
+    (agent: AgentId, signal: AbortSignal) => session.listModels(agent, signal),
+    [session],
+  );
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [inputRows, setInputRows] = useState(INPUT_BAR_MIN_ROWS);
   // Explicit paused state — never derived from !busy
@@ -302,6 +307,14 @@ export function DebateView(props: {
     }
   });
 
+  function selectModel(agent: AgentId, model: string, effort?: string) {
+    session.setModel(agent, model, effort);
+    setContextUsage((current) => ({ ...current, [agent]: undefined }));
+    props.onModelSelected(agent, model, effort).catch(() => {
+      flash("Model selected, but the preference could not be saved.");
+    });
+  }
+
   async function handleSubmit(raw: string, options?: { literal: true }) {
     setCommandPaletteOpen(false);
     const cmd: Command = options?.literal
@@ -338,8 +351,7 @@ export function DebateView(props: {
           setModelPickerAgent(cmd.agent);
           return;
         }
-        session.setModel(cmd.agent, cmd.model);
-        setContextUsage((current) => ({ ...current, [cmd.agent]: undefined }));
+        selectModel(cmd.agent, cmd.model);
         return;
       case "implement": {
         const alreadyImplementing = phase === "implementation";
@@ -579,10 +591,10 @@ export function DebateView(props: {
               <ModelPicker
                 key={modelPickerAgent}
                 agent={modelPickerAgent}
+                loadModels={loadModels}
                 width={inputBarWidth(columns)}
-                onSelect={(model) => {
-                  session.setModel(modelPickerAgent, model);
-                  setContextUsage((current) => ({ ...current, [modelPickerAgent]: undefined }));
+                onSelect={(model, effort) => {
+                  selectModel(modelPickerAgent, model, effort);
                   setModelPickerAgent(null);
                 }}
                 onCancel={() => setModelPickerAgent(null)}
@@ -791,7 +803,7 @@ function helpLines(): string[] {
     `${pad}${key("/topic")} — show the complete topic in the transcript`,
     `${pad}${key("/decisions")} — show confirmed decisions from project memory`,
     `${pad}${key("/claude")} or ${key("/codex")} text — targeted message`,
-    `${pad}${key("/model claude|codex name")} — change the model during the session`,
+    `${pad}${key("/model claude|codex")} — choose a model and effort (or append a model ID)`,
     `${pad}${key("/handoff")} — after consensus, generate a standalone markdown file (project context +`,
     `${pad}  specification) to pass to a native claude/codex session — recommended path`,
     `${pad}${key("/implement")} — grant write access and enter implementation (stay in Claudex)`,

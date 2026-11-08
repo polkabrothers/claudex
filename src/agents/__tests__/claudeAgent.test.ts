@@ -23,6 +23,35 @@ function successResult() {
 describe("ClaudeAgent streaming", () => {
   beforeEach(() => queryMock.mockReset());
 
+  it("lists models without sending a prompt or loading project hooks", async () => {
+    const close = vi.fn();
+    queryMock.mockReturnValue({
+      supportedModels: async () => [
+        { value: "opus", resolvedModel: "claude-opus-5-5", displayName: "Opus 5.5",
+          supportedEffortLevels: ["low", "high"] },
+      ],
+      close,
+    });
+
+    expect(await new ClaudeAgent().listModels("/project", new AbortController().signal))
+      .toEqual([{ id: "claude-opus-5-5", label: "Opus 5.5", efforts: [{ id: "low" }, { id: "high" }] }]);
+    expect(queryMock).toHaveBeenCalledWith(expect.objectContaining({
+      options: expect.objectContaining({ settingSources: [], strictMcpConfig: true, persistSession: false }),
+    }));
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("passes selected effort to the SDK on the next turn", async () => {
+    queryMock.mockReturnValue(messages([successResult()]));
+    const agent = new ClaudeAgent();
+    agent.setModel("opus", "high");
+    expect(agent.currentModel()).toContain("effort high");
+    await agent.send("Topic", { cwd: "/tmp", writeAccess: false });
+    expect(queryMock).toHaveBeenCalledWith(expect.objectContaining({
+      options: expect.objectContaining({ model: "opus", effort: "high" }),
+    }));
+  });
+
   it("emits actual text_delta events without repeating the final assistant message", async () => {
     queryMock.mockReturnValue(
       messages([
@@ -114,16 +143,17 @@ describe("ClaudeAgent streaming", () => {
       ]) as never,
     );
 
-    const agent = new ClaudeAgent("opus", "Opus 5");
+    const agent = new ClaudeAgent("opus");
+    expect(agent.currentModel()).toBe("Opus");
     await agent.send("Topic", { cwd: "/tmp", writeAccess: false });
 
     expect(agent.currentModel()).toBe("Opus 5.5");
   });
 
-  it("shows the picker label as soon as a model is selected", () => {
+  it("shows the selected alias until Claude resolves it", () => {
     const agent = new ClaudeAgent();
     agent.setModel("sonnet");
-    expect(agent.currentModel()).toBe("Sonnet 5");
+    expect(agent.currentModel()).toBe("Sonnet");
     expect(agent.hasExplicitModel()).toBe(true);
   });
 

@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => {
     claudeDefaultModel: null as string | null,
     codexDefaultModel: null as string | null,
     codexDefaultEffort: null as string | null,
+    modelSelections: {} as { claude?: { model: string; effort?: string } },
     // These fakes always answer <<CONTINUE>> from a microtask, so a real debate
     // between them never ends and would starve the event loop. Nothing here
     // asserts on how many turns happen, so one automatic start is enough to
@@ -40,6 +41,12 @@ const mocks = vi.hoisted(() => {
       return true;
     }
     setModel() {}
+    listModels() {
+      return Promise.resolve([
+        { id: "opus", label: "Opus 5", efforts: [] },
+        { id: "sonnet", label: "Sonnet 5", efforts: [{ id: "medium" }] },
+      ]);
+    }
     resetSession() {}
     send() {
       return new Promise<{ kind: "cancelled" } | { kind: "success"; text: string }>((resolve) => {
@@ -61,6 +68,7 @@ const mocks = vi.hoisted(() => {
   return {
     FakeAgent,
     appendDevlog: vi.fn(async () => {}),
+    rememberModelSelection: vi.fn(async () => {}),
     animatedHeader: vi.fn((props: { animation: string }) => {
       void props;
       return null;
@@ -99,6 +107,7 @@ vi.mock("../../memory/store.js", () => ({
   appendLimit: vi.fn(async () => {}),
   readDecisions: vi.fn(async () => "# Decisions\n\nNo confirmed decisions."),
   rememberAutonomyBudget: vi.fn(async () => {}),
+  rememberModelSelection: mocks.rememberModelSelection,
   saveHandoff: vi.fn(async () => "handoff.md"),
   saveTranscript: mocks.saveTranscript,
   sessionTitle: (topic: string) => topic,
@@ -286,11 +295,14 @@ describe("Root — cycle de vie du header", () => {
     expect(frameChunk).toBeDefined();
     const frame = frameChunk!.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
     expect(frame.indexOf("Opus 5")).toBeLessThan(frame.indexOf("Describe the technical question"));
-    expect(frame).toContain("↑↓ 1/4 · Tab or Enter select · Esc close");
+    expect(frame).toContain("↑↓ 1/2 · Tab or Enter select · Esc close");
 
     await press(terminal, "\u001b[B");
     await press(terminal, "\t");
-    expect(setModel).toHaveBeenCalledWith("sonnet");
+    await press(terminal, "\u001b[B");
+    await press(terminal, "\t");
+    expect(setModel).toHaveBeenCalledWith("sonnet", "medium");
+    expect(mocks.rememberModelSelection).toHaveBeenCalledWith("/projet-test", "claude", "sonnet", "medium");
     app.unmount();
     setModel.mockRestore();
   });

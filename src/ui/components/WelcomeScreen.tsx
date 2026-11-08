@@ -1,5 +1,5 @@
 import { Box, Text, useApp, useStdout } from "ink";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { CodingAgent } from "../../agents/types.js";
 import { parseCommand } from "../../orchestrator/commands.js";
 import type { AgentId } from "../../types.js";
@@ -61,7 +61,7 @@ export function welcomeMemoryLine(
 }
 
 const WELCOME_HELP_LINES = [
-  "Home: free text starts a debate · /model claude|codex <name>",
+  "Home: free text starts a debate · /model claude|codex opens model and effort",
   "During a debate: free text · /claude <text> · /codex <text>",
   "/pause · /resume · /cancel · /save · /new",
   "/autonomy unbounded|starts N|time 5m [--remember]",
@@ -72,13 +72,15 @@ const WELCOME_HELP_LINES = [
 ] as const;
 
 export function WelcomeScreen(props: {
+  cwd: string;
   agents: Record<AgentId, CodingAgent>;
   status: ProjectStatus;
   headerAnimation: HeaderAnimationId;
   onHeaderAnimationChange: (animation: HeaderAnimationId) => void;
   onStart: (topic: string) => void;
+  onModelSelected: (agent: AgentId, model: string, effort?: string) => Promise<void>;
 }) {
-  const { agents, status, headerAnimation, onHeaderAnimationChange, onStart } = props;
+  const { cwd, agents, status, headerAnimation, onHeaderAnimationChange, onStart } = props;
   const { exit } = useApp();
   const { stdout } = useStdout();
   const rows = stdout?.rows || 24;
@@ -92,6 +94,19 @@ export function WelcomeScreen(props: {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [modelPickerAgent, setModelPickerAgent] = useState<AgentId | null>(null);
   const selectionPaletteOpen = commandPaletteOpen || modelPickerAgent !== null;
+  const loadModels = useCallback(
+    (agent: AgentId, signal: AbortSignal) => agents[agent].listModels(cwd, signal),
+    [agents, cwd],
+  );
+
+  function selectModel(agent: AgentId, model: string, effort?: string) {
+    agents[agent].setModel(model, effort);
+    setNotice(null);
+    bump((v) => v + 1);
+    props.onModelSelected(agent, model, effort).catch(() => {
+      setNotice("Model selected, but the preference could not be saved.");
+    });
+  }
 
   function handleSubmit(value: string, options?: { literal: true }) {
     if (options?.literal) {
@@ -107,9 +122,7 @@ export function WelcomeScreen(props: {
         setModelPickerAgent(cmd.agent);
         return;
       }
-      agents[cmd.agent].setModel(cmd.model);
-      setNotice(null);
-      bump((v) => v + 1); // re-render to reflect the new model
+      selectModel(cmd.agent, cmd.model);
       return;
     }
 
@@ -197,11 +210,11 @@ export function WelcomeScreen(props: {
         <ModelPicker
           key={modelPickerAgent}
           agent={modelPickerAgent}
+          loadModels={loadModels}
           width={inputBarWidth(stdout?.columns ?? 80)}
-          onSelect={(model) => {
-            agents[modelPickerAgent].setModel(model);
+          onSelect={(model, effort) => {
+            selectModel(modelPickerAgent, model, effort);
             setModelPickerAgent(null);
-            bump((v) => v + 1);
           }}
           onCancel={() => setModelPickerAgent(null)}
         />
